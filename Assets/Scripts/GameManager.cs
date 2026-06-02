@@ -395,7 +395,7 @@ public class GameManager : NetworkBehaviour
         SelectedCharacterStats = selectedCharacter;
         ResetGameData();
 
-        SceneManager.LoadScene(SceneNames.PlaygroundLevel);
+        NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
     }
 
     /// <summary>
