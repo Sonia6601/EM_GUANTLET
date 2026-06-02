@@ -114,23 +114,24 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
     public void CreateButton()
     {
-        GameObject buttonGO = new GameObject("StartButton");
+        GameObject buttonGO = new GameObject("StartButton", typeof(RectTransform));
         buttonGO.transform.SetParent(canva.transform, false);
-
-
-        
 
         startButton = buttonGO.AddComponent<Button>();
 
         //Añadir componente RectTranform para que cree el rectangulo
-        RectTransform rect = buttonGO.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(200, 60);
-        rect.anchoredPosition = new Vector2(230, -150); 
+        RectTransform rect = buttonGO.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(1f, 0f);
+        rect.anchorMax = new Vector2(1f, 0f);
+        rect.pivot = new Vector2(1f, 0f);
+        rect.sizeDelta = new Vector2(220f, 70f);
+
+        rect.anchoredPosition = new Vector2(-20f, 20f);
 
         //Añadir componente Image para que tenga color de fondo
         Image img = buttonGO.AddComponent<Image>();
         img.color = new Color(0.2f, 0.6f, 0.2f, 1f);
-       
+
         //Crear gameObject para el texto
         GameObject textGO = new GameObject("Text");
         textGO.transform.SetParent(buttonGO.transform, false);
@@ -140,12 +141,11 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         textRect.anchoredPosition = Vector2.zero;
 
         //Añador componente Text para ponerle texto
-        Text texto = textGO.AddComponent<Text>();
+        TextMeshProUGUI texto = textGO.AddComponent<TextMeshProUGUI>();
         texto.text = "START";
         texto.fontSize = 24;
         texto.color = Color.white;
-        texto.alignment = TextAnchor.MiddleCenter;
-
+        texto.alignment = TextAlignmentOptions.Center;
 
         startButton.onClick.AddListener(OnRandomButtonClicked);
     }
