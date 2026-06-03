@@ -30,10 +30,112 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
             code.text = GameManager.Instance.RoomCode;
         }
 
+        UpdateConnectedClientsUI();
+
+        // Suscribirse al NetworkVariable 'clientes' para recibir actualizaciones desde el servidor
+        if (GameManager.Instance != null && GameManager.Instance.clientes != null)
+        {
+            GameManager.Instance.clientes.OnValueChanged += OnClientesChanged;
+        }
+
         if (IsServer)
         {
             CreateButton();
         }
+
+        // Debug: comprobar referencias
+        if (connectedPlayersText == null)
+        {
+            Debug.LogWarning("[CharSelection] connectedPlayersText no asignado en el Inspector. Intentando localizar automáticamente...");
+            TryAutoFindConnectedPlayersText();
+        }
+        else
+        {
+            Debug.Log($"[CharSelection] connectedPlayersText asignado: {connectedPlayersText.name}");
+        }
+    }
+
+    private void Update()
+    {
+        UpdateConnectedClientsUI();
+    }
+
+    /// <summary>
+    /// Actualiza la información de clientes conectados en el UI
+    /// </summary>
+    private void UpdateConnectedClientsUI()
+    {
+        if (NetworkManager.Singleton == null) return;
+
+        // Obtener el número total de clientes conectados
+        int totalClientes = NetworkManager.Singleton.ConnectedClients.Count;
+
+        if (connectedPlayersText != null)
+        {
+            // Mostrar el número usando el NetworkManager como fallback
+            connectedPlayersText.text = $"Clientes: {totalClientes}";
+        }
+        else
+        {
+            // Intentar encontrar automáticamente si no hay referencia
+            TryAutoFindConnectedPlayersText();
+        }
+
+        // Obtener la lista de IDs de clientes conectados
+        var connectedClientIds = NetworkManager.Singleton.ConnectedClientsIds;
+        string clientListText = "Clientes conectados:\n";
+        
+        int clientNumber = 1;
+        foreach (var clientId in connectedClientIds)
+        {
+            clientListText += $"Cliente {clientNumber}: {clientId}\n";
+            clientNumber++;
+        }
+
+        if (playerListText != null)
+        {
+            playerListText.text = clientListText;
+        }
+    }
+
+    private void OnClientesChanged(int previousValue, int newValue)
+    {
+        if (connectedPlayersText != null)
+        {
+            connectedPlayersText.text = $"Clientes: {newValue}";
+        }
+        else
+        {
+            Debug.Log($"[CharSelection] OnClientesChanged pero connectedPlayersText es NULL. nuevo valor={newValue}");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.clientes != null)
+        {
+            GameManager.Instance.clientes.OnValueChanged -= OnClientesChanged;
+        }
+    }
+
+    private void TryAutoFindConnectedPlayersText()
+    {
+        // Buscar componentes TMP en la escena y elegir el que contenga la palabra "Cliente" o "Clientes" en su texto o nombre
+        var all = FindObjectsOfType<TMPro.TMP_Text>(true);
+        foreach (var t in all)
+        {
+            if (t == null) continue;
+            string lowerName = t.name.ToLower();
+            string lowerText = (t.text ?? string.Empty).ToLower();
+            if (lowerName.Contains("cliente") || lowerText.Contains("cliente") || lowerText.Contains("clientes"))
+            {
+                connectedPlayersText = t;
+                Debug.Log($"[CharSelection] connectedPlayersText localizado automáticamente: {t.name}");
+                return;
+            }
+        }
+
+        Debug.LogWarning("[CharSelection] No se pudo localizar automáticamente connectedPlayersText. Asigna el campo en el Inspector.");
     }
 
 
