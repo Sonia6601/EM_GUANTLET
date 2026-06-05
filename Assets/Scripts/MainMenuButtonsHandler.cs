@@ -80,6 +80,7 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         transport.SetConnectionData(localIP, 7777);
 
         NetworkManager.Singleton.StartHost();
+        GameManager.Instance.mapConfigNetwork.Value = GameManager.Instance.SelectedMapIdx;
         GameManager.Instance.Code.Value = codeRoom;
 
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
@@ -257,12 +258,10 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         if (GameManager.Instance == null) return;
 
         GameManager.Instance.SelectedMapConfig = availableMaps[index];
+        GameManager.Instance.SelectedMapIdx = index;
         Debug.Log($"[MainMenu] Mapa seleccionado: {availableMaps[index].mapName}");
 
-        if (NetworkManager.Singleton.IsServer)
-        {
-            GameManager.Instance.MapConfigIdx.Value = index;
-        }
+        
     }
 
     private string GeneracionCodigoSala()

@@ -78,18 +78,10 @@ public class LevelGenerator : NetworkBehaviour
     /// </summary>
     public void Start()
     {
-        int idx = GameManager.Instance?.MapConfigIdx.Value ?? 0;
 
-        if (GameManager.Instance != null && GameManager.Instance.availableMaps != null)
-        {
-            GameManager.Instance.SelectedMapConfig = GameManager.Instance.availableMaps[idx];
-        }
 
-        //if (GameManager.Instance != null && GameManager.Instance.SelectedMapConfig == null)
-        //{
-        //    GameManager.Instance.SelectedMapConfig = defaultMapConfig;
-        //    Debug.Log("[LevelGenerator] Usando MapConfig por defecto.");
-        //}
+        int idx = GameManager.Instance.mapConfigNetwork.Value;
+        GameManager.Instance.SelectedMapConfig = GameManager.Instance.availableMaps[idx];
 
         int seed = GameManager.Instance?.seed.Value ?? 0; //si la semilla es null, se pone 0
 

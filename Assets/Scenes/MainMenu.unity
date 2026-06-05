@@ -3280,6 +3280,15 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   _networkManager: {fileID: 1796689202}
   _playerBall: {fileID: 9122475243463114963, guid: d9969b1b675d0224fb7413e14e6bb9c6, type: 3}
+  seed:
+    m_InternalValue: 0
+  MapConfigIdx:
+    m_InternalValue: 0
+  availableMaps:
+  - {fileID: 11400000, guid: e7f996d8a6f3bf845b973125994ac4c7, type: 2}
+  - {fileID: 11400000, guid: bcf72c4bf5e870b45a80931bbe1c33e4, type: 2}
+  - {fileID: 11400000, guid: f2b8fa0700c57d34f9afa2d02b13cf7c, type: 2}
+  - {fileID: 11400000, guid: a2d870e76cd0eba489fe60ae317c6517, type: 2}
   Code:
     m_InternalValue:
       utf8LengthInBytes: 0
