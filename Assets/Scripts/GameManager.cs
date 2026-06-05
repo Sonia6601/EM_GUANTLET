@@ -31,11 +31,19 @@ public class GameManager : NetworkBehaviour
     public MapConfig SelectedMapConfig { get; set; }
     public string RoomCode { get; set; }
 
+    public NetworkVariable<int> seed = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server); // 0 -> valor por defecto // .everyone -> lo pueden leer todos // .server -> solo lo puede modificar el server
+
+    public NetworkVariable<int> MapConfigIdx = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    [SerializeField] public MapConfig[] availableMaps;
+
     public NetworkVariable<Unity.Collections.FixedString64Bytes> Code = new NetworkVariable<Unity.Collections.FixedString64Bytes>(
             default,
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server
         );
+
+    
 
     [SerializeField] private float delayBeforeScene = 0.5f;
 
@@ -383,8 +391,9 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Guarda el personaje seleccionado, reinicia datos y carga el nivel de juego.
     /// </summary>
-    public void StartGame(PlayerStats selectedCharacter)
+    public void StartGame_(PlayerStats selectedCharacter)
     {
+
         if (selectedCharacter == null)
         {
             UnityEngine.Debug.LogError("[GameManager] StartGame llamado sin personaje seleccionado.");
@@ -401,10 +410,21 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Guarda mapa y personaje seleccionados e inicia la partida.
     /// </summary>
-    public void StartGame(PlayerStats selectedCharacter, MapConfig selectedMap)
+    public void StartGame(PlayerStats selectedCharacter, MapConfig selectedMap = null)
     {
-        SelectedMapConfig = selectedMap;
-        StartGame(selectedCharacter);
+        if ( selectedMap != null)
+        {
+            SelectedMapConfig = selectedMap;
+        }
+
+        
+        
+
+        if (IsServer)
+        {
+            seed.Value = Random.Range(1, int.MaxValue); //0 -> no asignado
+        }
+        StartGame_(selectedCharacter);
     }
 
     /// <summary>
@@ -425,6 +445,8 @@ public class GameManager : NetworkBehaviour
         {
             GameEvents.ClearSceneEvents();
         }
+
+        
     }
 
     /// <summary>

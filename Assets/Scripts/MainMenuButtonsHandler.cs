@@ -258,6 +258,11 @@ public class MainMenuButtonsHandler : NetworkBehaviour
 
         GameManager.Instance.SelectedMapConfig = availableMaps[index];
         Debug.Log($"[MainMenu] Mapa seleccionado: {availableMaps[index].mapName}");
+
+        if (NetworkManager.Singleton.IsServer)
+        {
+            GameManager.Instance.MapConfigIdx.Value = index;
+        }
     }
 
     private string GeneracionCodigoSala()
