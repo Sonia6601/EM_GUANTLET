@@ -333,15 +333,15 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     /// 
     /// Para futuras iteraciones, en esta función se puede hacer que se compruebe si todos los persoanjes tienen uno asignado, de mometno no nos hace falta, ya que la asignación de persoanjes se va a hacer de forma directa
     /// </summary>
-    private void selectCharacterAndStartGame(PlayerStats characterStats)
-    {
-        //if (characterStats == null)
-        //{
-        //    Debug.LogError("[CharSelection] No se ha asignado PlayerStats para este personaje");
-        //    return;
-        //}
+    //private void selectCharacterAndStartGame(PlayerStats characterStats)
+    //{
+    //    //if (characterStats == null)
+    //    //{
+    //    //    Debug.LogError("[CharSelection] No se ha asignado PlayerStats para este personaje");
+    //    //    return;
+    //    //}
 
-        GameManager.Instance?.StartGame(characterStats);
-    }
+    //    GameManager.Instance?.StartGame(characterStats);
+    //}
 
 }

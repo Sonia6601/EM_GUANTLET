@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.Tilemaps;
 
 [System.Serializable]
@@ -26,7 +27,7 @@ public class RingSettings
     public float decorativeElementPercentage = 0.05f;
 }
 
-public class LevelGenerator : MonoBehaviour
+public class LevelGenerator : NetworkBehaviour
 {
     [SerializeField] private TilemapFiller tilemapFiller;
 
@@ -75,13 +76,23 @@ public class LevelGenerator : MonoBehaviour
     /// <summary>
     /// Garantiza la configuración de mapa activa y ejecuta la generación inicial del nivel.
     /// </summary>
-    private void Start()
+    public void Start()
     {
-        if (GameManager.Instance != null && GameManager.Instance.SelectedMapConfig == null)
+
+
+        int idx = GameManager.Instance.mapConfigNetwork.Value;
+        GameManager.Instance.SelectedMapConfig = GameManager.Instance.availableMaps[idx];
+
+        int seed = GameManager.Instance?.seed.Value ?? 0; //si la semilla es null, se pone 0
+
+        if (seed == 0)
         {
-            GameManager.Instance.SelectedMapConfig = defaultMapConfig;
-            Debug.Log("[LevelGenerator] Usando MapConfig por defecto.");
+            seed = Random.Range(1, int.MaxValue);
+            Debug.LogWarning("[LEVEL GENERATOR] No se ha podido obtener la semilla de red, utilizando semilla local");
         }
+
+        Random.InitState(seed); //Se inicializa la semilla del random
+        Debug.Log("[LEVEL GENERATOR] Generando mapa con semilla: " + seed);
 
         generateLevel();
         preparePlayerSpawn();
