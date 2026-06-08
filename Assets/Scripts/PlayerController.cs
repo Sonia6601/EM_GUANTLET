@@ -7,11 +7,18 @@ public class PlayerController : CharController
     protected int damageToEnemy;
     protected float attackCooldown;
 
+    private float horizontalInput;         // Entrada horizontal (A/D o flechas)
+    private float verticalInput;           // Entrada vertical (W/S o flechas)
+
+    public float moveSpeed = 5f;           // Velocidad de movimiento
+
+
     private PlayerControls controls;
 
     public bool IsAttacking { get; private set; } = false;
     public int DamageToEnemy => damageToEnemy;
     public NetworkVariable<Vector2> Position = new NetworkVariable<Vector2>();
+    public NetworkVariable<float> moveSpeedSync = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
 
     /// <summary>
@@ -36,6 +43,7 @@ public class PlayerController : CharController
 
     public override void OnNetworkSpawn()
     {
+
         base.OnNetworkSpawn();
 
         // Dispara eventos iniciales para actualizar el HUD
@@ -50,11 +58,14 @@ public class PlayerController : CharController
     /// <summary>
     /// Inicializa estado del jugador y notifica los valores iniciales al HUD.
     /// </summary>
-    /*protected override void Start()
+    protected override void Start()
     {
-        base.Start();
+        base.Start(); 
 
-    }*/
+
+    }
+
+    
 
     /// <summary>
     /// Actualiza animación, orientación y estado de vida en cada frame.
@@ -62,8 +73,7 @@ public class PlayerController : CharController
     protected override void Update()
     {
 
-        if (!IsOwner) return; //si no eres el jugador no puedes mover el jugador
-
+        if (!IsOwner) return; 
         animator.SetFloat("speed", movement.sqrMagnitude);
 
         if (movement.sqrMagnitude > 0.01f)
@@ -74,6 +84,89 @@ public class PlayerController : CharController
         }
 
         checkDeath();
+    }
+
+    private void FixedUpdate()
+    {
+        if (!IsOwner) return; //si no eres el dueño del script no mueves nada
+
+        horizontalInput = Input.GetAxis("Horizontal");
+        verticalInput = Input.GetAxis("Vertical");
+
+        if (!IsHost)
+        {
+
+            Vector2 moveDir = new Vector2(horizontalInput, verticalInput);
+
+            SendDirectionToServerRpc(moveDir);
+
+            // Calcula la pos de la cámara del cliente
+        }
+        else
+        {
+            MovePlayer();
+        }
+
+        }
+
+        [ServerRpc]
+    void SendDirectionToServerRpc(Vector3 moveDirection)
+    {
+        if (moveDirection == Vector3.zero) return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+        float adjustedSpeed = moveSpeed;
+        transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+        BroadcastTransformClientRpc(transform.position, transform.rotation);
+    }
+
+    [ClientRpc]
+    void BroadcastTransformClientRpc(Vector3 pos, Quaternion rot)
+    {
+        transform.position = pos;
+        transform.rotation = rot;
+    }
+
+    void MovePlayer()
+    {
+
+        // Calcular la dirección de movimiento en relación a la cámara
+        Vector3 moveDirection = new Vector3(verticalInput, horizontalInput,0);
+        moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
+
+        // Mover el jugador usando el Transform
+        if (moveDirection != Vector3.zero)
+        {
+            // Calcular la rotación en Y basada en la dirección del movimiento
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+            // Ajustar la velocidad si es zombie
+            float adjustedSpeed = moveSpeed;
+
+            // Mover al jugador en la dirección deseada
+            transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+            MoveRequestRpc(transform.position, transform.rotation);
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void MoveRequestRpc(Vector3 pos, Quaternion rot)
+    {
+        this.transform.position = pos;
+        this.transform.rotation = rot;
+    }
+
+    void LateUpdate()
+    {
+        if (!IsOwner)
+        {
+            animator.SetFloat("Speed", moveSpeedSync.Value);
+        }
     }
 
     /// <summary>
