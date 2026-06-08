@@ -93,23 +93,23 @@ public class PlayerController : CharController
         horizontalInput = Input.GetAxis("Horizontal");
         verticalInput = Input.GetAxis("Vertical");
 
-        if (!IsHost)
-        {
+        //if (!IsHost)
+        //{
 
             Vector2 moveDir = new Vector2(horizontalInput, verticalInput);
 
             SendDirectionToServerRpc(moveDir);
 
             // Calcula la pos de la cámara del cliente
-        }
-        else
-        {
-            MovePlayer();
-        }
+        //}
+        //else
+        //{
+            //MovePlayer();
+        //}
 
         }
 
-        [ServerRpc]
+    [ServerRpc]
     void SendDirectionToServerRpc(Vector3 moveDirection)
     {
         if (moveDirection == Vector3.zero) return;
