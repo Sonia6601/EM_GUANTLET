@@ -320,6 +320,7 @@ public class LevelGenerator : NetworkBehaviour
     private void applySpawnAndCharacter(PlayerController player, Vector3 spawnPos)
     {
         player.gameObject.SetActive(true);
+        Debug.LogWarning("[LEVEL GENERATOR] JUGADOR ACTIVADO");
         player.transform.position = spawnPos;
         applySelectedCharacter(player);
     }

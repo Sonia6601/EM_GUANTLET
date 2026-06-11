@@ -1,4 +1,5 @@
 ﻿using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -7,11 +8,18 @@ public class PlayerController : CharController
     protected int damageToEnemy;
     protected float attackCooldown;
 
+    private float horizontalInput;         // Entrada horizontal (A/D o flechas)
+    private float verticalInput;           // Entrada vertical (W/S o flechas)
+
+    //public float moveSpeed = 5f;           // Velocidad de movimiento
+
+
     private PlayerControls controls;
 
     public bool IsAttacking { get; private set; } = false;
     public int DamageToEnemy => damageToEnemy;
     public NetworkVariable<Vector2> Position = new NetworkVariable<Vector2>();
+    public NetworkVariable<float> moveSpeedSync = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
 
     /// <summary>
@@ -22,11 +30,12 @@ public class PlayerController : CharController
         base.Awake();
         controls = new PlayerControls();
 
-        controls.Player.Move.performed += ctx => movement = ctx.ReadValue<Vector2>();
-        controls.Player.Move.canceled += _ => movement = Vector2.zero;
 
         // ✅ Ocultar hasta que LevelGenerator lo reposicione
-        gameObject.SetActive(false);
+        Debug.LogWarning("[AWAKE PLAYER CONTROLLER] SPRITE RENDERER DESACTVADO - NO SE VE");
+        //gameObject.SetActive(false);
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.enabled = false;
 
         UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
         if (GameManager.Instance != null)
@@ -36,25 +45,45 @@ public class PlayerController : CharController
 
     public override void OnNetworkSpawn()
     {
+
         base.OnNetworkSpawn();
 
-        // Dispara eventos iniciales para actualizar el HUD
-        GameEvents.HealthChanged(health);
-        GameEvents.KeysChanged();
-        GameEvents.DiamondsChanged();
+        Debug.LogWarning("[ON NETWORK SPAWN] VOY A HACER LA CONEXION RED");
+        //gameObject.SetActive(true);
+        
+        //var sr = GetComponent<SpriteRenderer>();
+        
 
-        IsAttacking = false;
+        string escenaActual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+
+        if (escenaActual == SceneNames.PlaygroundLevel)
+        {
+            //if (sr != null) sr.enabled = true;
+            // Dispara eventos iniciales para actualizar el HUD
+            GameEvents.HealthChanged(health);
+            GameEvents.KeysChanged();
+            GameEvents.DiamondsChanged();
+
+            IsAttacking = false;
+        }
+        
+        
+        
     }
 
 
     /// <summary>
     /// Inicializa estado del jugador y notifica los valores iniciales al HUD.
     /// </summary>
-    /*protected override void Start()
+    protected override void Start()
     {
         base.Start();
 
-    }*/
+        gameObject.SetActive(false);
+        Debug.LogWarning("[START PLAYER CONTROLLER] JUGADOR DESACTIVADO");
+    }
+
+
 
     /// <summary>
     /// Actualiza animación, orientación y estado de vida en cada frame.
@@ -62,7 +91,9 @@ public class PlayerController : CharController
     protected override void Update()
     {
 
+
         if (!IsOwner) return; //si no eres el jugador no puedes mover el jugador
+
 
         animator.SetFloat("speed", movement.sqrMagnitude);
 
@@ -70,18 +101,142 @@ public class PlayerController : CharController
         {
             float angle = Mathf.Atan2(movement.y, movement.x) * Mathf.Rad2Deg;
             transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
-            transform.position = Position.Value;
         }
 
         checkDeath();
     }
+
+
+    //private void FixedUpdate()
+    //{
+    //    if (!IsOwner || !IsSpawned) return; //si no eres el dueño del script no mueves nada
+    //    string escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+    //    if (escena != SceneNames.PlaygroundLevel) return;
+
+    //    //var sr = GetComponent<SpriteRenderer>();
+    //    //if (sr != null && !sr.enabled) return; 
+
+    //    Vector2 movimiento = movement.normalized;
+
+
+    //    if (movimiento.sqrMagnitude > 0.01f)
+    //    {
+    //        //Se mueve el jugador localmente para respuesta inmediata
+    //        transform.Translate((Vector3)movimiento * moveSpeed * Time.fixedDeltaTime, Space.World);
+
+    //        //Notificar al servidor
+    //        //SendMovementToServerRpc(transform.position, transform.rotation);
+    //    }
+
+
+
+    //}
+
+    //[ServerRpc]
+    //void SendMovementToServerRpc(Vector3 pos, Quaternion rot)
+    //{
+    //    BroadcastTransformClientRpc(pos, rot);
+    //}
+    //void SendDirectionToServerRpc(Vector3 moveDirection)
+    //{
+    //    if (moveDirection == Vector3.zero) return;
+
+    //    Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+    //    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+    //    float adjustedSpeed = moveSpeed;
+    //    transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+    //    BroadcastTransformClientRpc(transform.position, transform.rotation);
+    //}
+
+    //[ClientRpc]
+    //void BroadcastTransformClientRpc(Vector3 pos, Quaternion rot)
+    //{
+    //    if (IsOwner) return;
+
+    //    transform.position = pos;
+    //    transform.rotation = rot;
+    //}
+    protected override void FixedUpdate()
+    {
+
+        base.FixedUpdate();
+
+
+    }
+    protected override void Move()
+    {
+        //Si no es el duenno o no está spawneado, no hagas nada
+        if (!IsOwner || !IsSpawned) return;
+
+        //Si la escena actual no es la de juego, no hagas nada
+        string escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (escena != SceneNames.PlaygroundLevel) return;
+
+
+        base.Move();
+    }
+
+    void MovePlayer()
+    {
+
+        // Calcular la dirección de movimiento en relación a la cámara
+        Vector3 moveDirection = new Vector3(verticalInput, horizontalInput, 0);
+        moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
+
+        // Mover el jugador usando el Transform
+        if (moveDirection != Vector3.zero)
+        {
+            // Calcular la rotación en Y basada en la dirección del movimiento
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+            // Ajustar la velocidad si es zombie
+            float adjustedSpeed = moveSpeed;
+
+            // Mover al jugador en la dirección deseada
+            transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+            MoveRequestRpc(transform.position, transform.rotation);
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void MoveRequestRpc(Vector3 pos, Quaternion rot)
+    {
+        this.transform.position = pos;
+        this.transform.rotation = rot;
+    }
+
+    void LateUpdate()
+    {
+        if (!IsOwner)
+        {
+            animator.SetFloat("speed", moveSpeedSync.Value);
+        }
+    }
+
 
     /// <summary>
     /// Activa el mapa de controles y suscribe la acción de ataque.
     /// </summary>
     private void OnEnable()
     {
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.enabled = true;
+
+
+        if (controls == null) controls = new PlayerControls();
+
+        //Activamos inputs
         controls.Enable();
+
+        //Suscribimos movimientos del personaje
+        controls.Player.Move.performed += OnMovePerformed;
+        controls.Player.Move.canceled += OnMoveCanceled;
+
+        //Sucribimos el ataque
         controls.Player.Attack.performed += onAttack;
     }
 
@@ -90,8 +245,18 @@ public class PlayerController : CharController
     /// </summary>
     private void OnDisable()
     {
-        controls.Player.Attack.performed -= onAttack;
-        controls.Disable();
+        if (controls != null)
+        {
+            //Desuscribimos el movimiento del personaje
+            controls.Player.Move.performed -= OnMovePerformed;
+            controls.Player.Move.canceled -= OnMoveCanceled;
+
+            //Desiscribimos el ataque
+            controls.Player.Attack.performed -= onAttack;
+
+            //Desactivamos los inputs
+            controls.Disable();
+        }
     }
 
     /// <summary>
@@ -99,6 +264,7 @@ public class PlayerController : CharController
     /// </summary>
     public override void Die()
     {
+
         base.Die();
 
         // Dispara evento de muerte
@@ -165,7 +331,7 @@ public class PlayerController : CharController
         {
             // Aplica el bonus de velocidad del jugador
             moveSpeed *= playerStats.speedBonus;
-            
+
             // Carga stats específicas del jugador
             damageToEnemy = playerStats.attackDamage;
             attackCooldown = playerStats.attackCooldown;
@@ -185,6 +351,7 @@ public class PlayerController : CharController
     /// </summary>
     private void checkDeath()
     {
+        //Debug.Log($"[checkDeath] health: {health} | isDead: {isDead}");
         if (health <= 0 && !isDead)
         {
             Die();
@@ -199,6 +366,16 @@ public class PlayerController : CharController
         animator.SetTrigger("Attack");
         IsAttacking = true;
         Invoke(nameof(endAttack), attackCooldown);
+    }
+
+    private void OnMovePerformed(InputAction.CallbackContext ctx)
+    {
+        movement = ctx.ReadValue<Vector2>();
+    }
+
+    private void OnMoveCanceled(InputAction.CallbackContext ctx)
+    {
+        movement = Vector2.zero;
     }
 
     /// <summary>

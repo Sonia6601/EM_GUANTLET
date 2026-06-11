@@ -21,6 +21,7 @@ public class GameManager : NetworkBehaviour
     public NetworkManager _networkManager;
 
     [SerializeField] private GameObject _playerBall;
+    //[SerializeField] private GameObject _playerPrefab;
 
     public PlayerController LocalPlayerController { get; private set; }
     public Transform LocalPlayerTransform => LocalPlayerController != null ? LocalPlayerController.transform : null;
@@ -94,40 +95,46 @@ public class GameManager : NetworkBehaviour
     private void onSceneLoadCompleted(string sceneName, LoadSceneMode loadSceneMode,
     List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
-        UnityEngine.Debug.Log($"[GameManager] onSceneLoadCompleted: escena={sceneName}, clientes={clientsCompleted.Count}");
+        //if / !_networkManager.IsServer) return;
 
-        if (sceneName != SceneNames.CharSelection) return;
         if (!_networkManager.IsServer) return;
+        UnityEngine.Debug.Log("[GAME MANAGER] Escena cargada: " + sceneName);
 
-        foreach (ulong clientId in clientsCompleted)
+        if (sceneName == SceneNames.CharSelection)
         {
-            var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
 
-            // Only skip if it already has PlayerState (i.e. it's our prefab)
-            if (existing != null && existing.GetComponent<PlayerState>() != null)
+            foreach (ulong clientId in clientsCompleted)
             {
-                UnityEngine.Debug.Log($"[GameManager] Cliente {clientId} ya tiene PlayerState, no se vuelve a spawnear.");
-                continue;
+                var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
+
+                if (existing == null)
+                {
+                    var playerObject = Instantiate(_playerBall);
+                    NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+                    networkObject.SpawnAsPlayerObject(clientId);
+                }
+
+                //// Only skip if it already has PlayerState (i.e. it's our prefab)
+                //if (existing != null && existing.GetComponent<PlayerState>() != null)
+                //{
+                //    UnityEngine.Debug.Log($"[GameManager] Cliente {clientId} ya tiene PlayerState, no se vuelve a spawnear.");
+                //    continue;
+                //}
+
+                //// Despawn the wrong prefab if present
+                //if (existing != null)
+                //{
+                //    UnityEngine.Debug.LogWarning($"[GameManager] Cliente {clientId} tiene PlayerObject sin PlayerState, despawneando.");
+                //    existing.Despawn();
+                //}
+
+                //var playerObject = Instantiate(_playerBall);
+                //NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+                //networkObject.SpawnAsPlayerObject(clientId);
+                
+                
+
             }
-
-            // Despawn the wrong prefab if present
-            if (existing != null)
-            {
-                UnityEngine.Debug.LogWarning($"[GameManager] Cliente {clientId} tiene PlayerObject sin PlayerState, despawneando.");
-                existing.Despawn();
-            }
-
-            var playerObject = Instantiate(_playerBall);
-            NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
-
-            if (networkObject == null)
-            {
-                UnityEngine.Debug.LogError($"[GameManager] El prefab _playerBall NO tiene componente NetworkObject!");
-                continue;
-            }
-
-            networkObject.SpawnAsPlayerObject(clientId);
-            UnityEngine.Debug.Log($"[GameManager] Spawneado PlayerObject para cliente {clientId}.");
         }
     }
 
@@ -425,6 +432,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public void TriggerGameOver()
     {
+        UnityEngine.Debug.Log($"[TriggerGameOver] Llamado desde:\n{System.Environment.StackTrace}");
         UnityEngine.Debug.Log($"[GameManager] Game Over. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
         Invoke(nameof(loadDeadScene), delayBeforeScene);
     }
