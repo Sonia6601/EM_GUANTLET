@@ -32,7 +32,7 @@ public class PlayerController : CharController
         controls.Player.Move.performed += ctx => movement = ctx.ReadValue<Vector2>();
         controls.Player.Move.canceled += _ => movement = Vector2.zero;
 
-        // ✅ Ocultar hasta que LevelGenerator lo reposicione
+
         gameObject.SetActive(false);
 
         UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
@@ -62,7 +62,15 @@ public class PlayerController : CharController
     {
         base.Start(); 
 
+        gameObject.SetActive(false);
+        Debug.LogWarning("[START PLAYER CONTROLLER] JUGADOR DESACTIVADO");
 
+        if (IsOwner)
+        {
+            //SendDirectionToServerRpc(transform.position);
+            Debug.LogWarning("[START PLAYER CONTROLLER] ENVIANDO MOVIMIENTO");
+
+        }
     }
 
     
@@ -86,50 +94,60 @@ public class PlayerController : CharController
         checkDeath();
     }
 
+
     private void FixedUpdate()
     {
         if (!IsOwner) return; //si no eres el dueño del script no mueves nada
 
-        horizontalInput = Input.GetAxis("Horizontal");
-        verticalInput = Input.GetAxis("Vertical");
 
-        //if (!IsHost)
-        //{
+    //private void FixedUpdate()
+    //{
+    //    if (!IsOwner || !IsSpawned) return; //si no eres el dueño del script no mueves nada
+    //    string escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+    //    if (escena != SceneNames.PlaygroundLevel) return;
 
-            Vector2 moveDir = new Vector2(horizontalInput, verticalInput);
+    //    //var sr = GetComponent<SpriteRenderer>();
+    //    //if (sr != null && !sr.enabled) return; 
 
-            SendDirectionToServerRpc(moveDir);
+    //    Vector2 movimiento = movement.normalized;
 
-            // Calcula la pos de la cámara del cliente
-        //}
-        //else
-        //{
-            //MovePlayer();
-        //}
 
-        }
+    //    if (movimiento.sqrMagnitude > 0.01f)
+    //    {
+    //        //Se mueve el jugador localmente para respuesta inmediata
+    //        transform.Translate((Vector3)movimiento * moveSpeed * Time.fixedDeltaTime, Space.World);
 
-    [ServerRpc]
-    void SendDirectionToServerRpc(Vector3 moveDirection)
-    {
-        if (moveDirection == Vector3.zero) return;
+    //        //Notificar al servidor
+    //        //SendMovementToServerRpc(transform.position, transform.rotation);
+    //    }
 
-        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
 
-        float adjustedSpeed = moveSpeed;
-        transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
 
-        BroadcastTransformClientRpc(transform.position, transform.rotation);
-    }
+    //}
 
-    [ClientRpc]
-    void BroadcastTransformClientRpc(Vector3 pos, Quaternion rot)
-    {
-        transform.position = pos;
-        transform.rotation = rot;
-    }
 
+    //[ServerRpc]
+    //void SendDirectionToServerRpc(Vector3 moveDirection)
+    //{
+    //    if (moveDirection == Vector3.zero) return;
+
+    //    Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+    //    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+    //    float adjustedSpeed = moveSpeed;
+    //    transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+    //    BroadcastTransformClientRpc(transform.position, transform.rotation);
+    //}
+
+    //[ClientRpc]
+    //void BroadcastTransformClientRpc(Vector3 pos, Quaternion rot)
+    //{
+    //    if (IsOwner) return;
+
+    //    transform.position = pos;
+    //    transform.rotation = rot;
+    //}
     void MovePlayer()
     {
 
@@ -236,7 +254,7 @@ public class PlayerController : CharController
     /// </summary>
     protected override void LoadStats()
     {
-        // ✅ PRIMERO: Intenta cargar desde GameManager (personaje seleccionado)
+        //  PRIMERO: Intenta cargar desde GameManager (personaje seleccionado)
         if (GameManager.Instance != null && GameManager.Instance.SelectedCharacterStats != null)
         {
             stats = GameManager.Instance.SelectedCharacterStats;
@@ -251,7 +269,7 @@ public class PlayerController : CharController
 
         base.LoadStats();
 
-        // ✅ Haz casting del campo heredado
+        //  Haz casting del campo heredado
         PlayerStats playerStats = stats as PlayerStats;
 
         if (playerStats != null)

@@ -61,6 +61,8 @@ public abstract class CharController : NetworkBehaviour
     /// </summary>
     protected virtual void FixedUpdate()
     {
+        if (!IsOwner || !IsSpawned) return;
+
         if (isKnockback)
         {
             knockbackTimer -= Time.fixedDeltaTime;

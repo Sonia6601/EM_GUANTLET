@@ -120,6 +120,23 @@ public class GameManager : NetworkBehaviour
             networkObject.SpawnAsPlayerObject(clientId);
             UnityEngine.Debug.Log($"[GameManager] Spawneado PlayerObject para cliente {clientId}.");
         }
+
+
+        //else if (sceneName == SceneNames.PlaygroundLevel)
+        //{
+
+        //    foreach (ulong clientId in clientsCompleted)
+        //    {
+        //        var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
+
+        //        if (existing == null)
+        //        {
+        //            var playerObject = Instantiate(_playerBall);
+        //            NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+        //            networkObject.SpawnAsPlayerObject(clientId);
+        //        }
+        //    }
+        //}
     }
 
 
@@ -259,14 +276,6 @@ public class GameManager : NetworkBehaviour
 
     private IEnumerator DespawnAndLoadScene()
     {
-        var allPlayers = GameObject.FindGameObjectsWithTag("Player");
-        foreach (var player in allPlayers)
-        {
-            if (player.TryGetComponent<NetworkObject>(out var netObj))
-            {
-                netObj.Despawn();
-            }
-        }
 
         // Esperar 1 frame (mínimo)
         yield return null;
