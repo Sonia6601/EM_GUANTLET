@@ -37,9 +37,7 @@ public class PlayerController : CharController
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = false;
 
-        UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
-        if (GameManager.Instance != null)
-            GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
+        
     }
 
 
@@ -53,6 +51,12 @@ public class PlayerController : CharController
         
         //var sr = GetComponent<SpriteRenderer>();
         
+        if (IsOwner)
+        {
+            UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
+            if (GameManager.Instance != null)
+                GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
+        }
 
         string escenaActual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
@@ -178,36 +182,42 @@ public class PlayerController : CharController
         base.Move();
     }
 
-    void MovePlayer()
+    [Rpc(SendTo.Everyone)]
+    public void ActivarPersonajeRpc()
     {
-
-        // Calcular la dirección de movimiento en relación a la cámara
-        Vector3 moveDirection = new Vector3(verticalInput, horizontalInput, 0);
-        moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
-
-        // Mover el jugador usando el Transform
-        if (moveDirection != Vector3.zero)
-        {
-            // Calcular la rotación en Y basada en la dirección del movimiento
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
-
-            // Ajustar la velocidad si es zombie
-            float adjustedSpeed = moveSpeed;
-
-            // Mover al jugador en la dirección deseada
-            transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
-
-            MoveRequestRpc(transform.position, transform.rotation);
-        }
+        gameObject.SetActive(true);
     }
 
-    [Rpc(SendTo.ClientsAndHost)]
-    void MoveRequestRpc(Vector3 pos, Quaternion rot)
-    {
-        this.transform.position = pos;
-        this.transform.rotation = rot;
-    }
+    //void MovePlayer()
+    //{
+
+    //    // Calcular la dirección de movimiento en relación a la cámara
+    //    Vector3 moveDirection = new Vector3(verticalInput, horizontalInput, 0);
+    //    moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
+
+    //    // Mover el jugador usando el Transform
+    //    if (moveDirection != Vector3.zero)
+    //    {
+    //        // Calcular la rotación en Y basada en la dirección del movimiento
+    //        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+    //        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
+
+    //        // Ajustar la velocidad si es zombie
+    //        float adjustedSpeed = moveSpeed;
+
+    //        // Mover al jugador en la dirección deseada
+    //        transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
+
+    //        MoveRequestRpc(transform.position, transform.rotation);
+    //    }
+    //}
+
+    //[Rpc(SendTo.ClientsAndHost)]
+    //void MoveRequestRpc(Vector3 pos, Quaternion rot)
+    //{
+    //    this.transform.position = pos;
+    //    this.transform.rotation = rot;
+    //}
 
     void LateUpdate()
     {
@@ -226,6 +236,7 @@ public class PlayerController : CharController
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = true;
 
+        if (!IsOwner) return;
 
         if (controls == null) controls = new PlayerControls();
 
@@ -370,11 +381,13 @@ public class PlayerController : CharController
 
     private void OnMovePerformed(InputAction.CallbackContext ctx)
     {
+        if (!IsOwner) return;
         movement = ctx.ReadValue<Vector2>();
     }
 
     private void OnMoveCanceled(InputAction.CallbackContext ctx)
     {
+        if (!IsOwner) return;
         movement = Vector2.zero;
     }
 
