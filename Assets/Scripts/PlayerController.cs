@@ -183,9 +183,28 @@ public class PlayerController : CharController
     }
 
     [Rpc(SendTo.Everyone)]
-    public void ActivarPersonajeRpc()
+    public void ActivarPersonajeRpc(Vector3 pos)
+    {
+        transform.position = pos;
+        gameObject.SetActive(true);
+        //Debug.LogWarning("Host Activado");
+        //Decirle al server que active a los persoanjes
+        NotificarActivacionRpc();
+
+    }
+
+    [Rpc(SendTo.Server)]
+    public void NotificarActivacionRpc()
+    {
+        //El server activa el networkObject en todos los clientes
+        ActivarPersonajesRpc();
+    }
+
+    [Rpc(SendTo.Everyone)]
+    public void ActivarPersonajesRpc()
     {
         gameObject.SetActive(true);
+        //Debug.LogWarning("Personajes Activados");
     }
 
     //void MovePlayer()
