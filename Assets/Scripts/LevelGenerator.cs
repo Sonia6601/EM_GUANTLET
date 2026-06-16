@@ -322,7 +322,7 @@ public class LevelGenerator : NetworkBehaviour
         player.ActivarPersonajeRpc(spawnPos);
         Debug.LogWarning("[LEVEL GENERATOR] JUGADOR ACTIVADO");
         
-        applySelectedCharacter(player);
+        //applySelectedCharacter(player);
     }
 
     
