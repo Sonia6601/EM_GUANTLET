@@ -1,7 +1,8 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 [RequireComponent(typeof(UniqueEntity))]
-public class EnemySpawner : MonoBehaviour
+public class EnemySpawner : NetworkBehaviour
 {
     [Header("Configuración del Spawner")]
     [SerializeField] private GameObject enemyPrefab;
@@ -28,7 +29,7 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        if (enemyPrefab == null || spawnedCount >= totalEnemies)
+        if (!IsServer||enemyPrefab == null || spawnedCount >= totalEnemies)
             return;
 
         timer -= Time.deltaTime;
@@ -60,5 +61,11 @@ public class EnemySpawner : MonoBehaviour
         UniqueEntity uniqueEntity = enemy.GetComponent<UniqueEntity>();
         if (uniqueEntity != null)
             uniqueEntity.RegenerateIdOnSpawn();
+
+        NetworkObject netObj= enemy.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.Spawn(true);
+        }
     }
 }

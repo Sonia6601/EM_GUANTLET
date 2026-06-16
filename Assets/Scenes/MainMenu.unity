@@ -3361,6 +3361,11 @@ MonoBehaviour:
   delayBeforeScene: 0.5
   clientes:
     m_InternalValue: 0
+  availableCharacters:
+  - {fileID: 11400000, guid: ff37192e7cfcb0349ad1d099d2f93b2f, type: 2}
+  - {fileID: 11400000, guid: 4cc605f5cab4b0f4f9e9d3abd7a8a52d, type: 2}
+  - {fileID: 11400000, guid: bab4382f0707bdf4fb1b65d0014d1dc6, type: 2}
+  - {fileID: 11400000, guid: 010a2fba8cd64a546ad9b0618ce3a0fe, type: 2}
 --- !u!4 &1766168942
 Transform:
   m_ObjectHideFlags: 0

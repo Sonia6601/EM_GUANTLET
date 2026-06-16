@@ -482,6 +482,27 @@ public class GameManager : NetworkBehaviour
     {
         UnityEngine.Debug.Log($"[GameManager] Jugador muerto. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
     }
+    [Header("Personajes Disponibles")]
+    [SerializeField] private PlayerStats[] availableCharacters; // <-- Añade esto
+
+    // Una función rápida para obtener el índice del personaje seleccionado
+    public int GetSelectedCharacterIndex()
+    {
+        if (SelectedCharacterStats == null) return 0;
+        for (int i = 0; i < availableCharacters.Length; i++)
+        {
+            if (availableCharacters[i] == SelectedCharacterStats) return i;
+        }
+        return 0;
+    }
+
+    // Una función para obtener las estadísticas usando el índice que viaja por la red
+    public PlayerStats GetCharacterStatsByIndex(int index)
+    {
+        if (availableCharacters == null || index < 0 || index >= availableCharacters.Length)
+            return availableCharacters[0]; // Fallback al primero
+        return availableCharacters[index];
+    }
 
 }
 

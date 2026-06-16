@@ -319,11 +319,13 @@ public class LevelGenerator : NetworkBehaviour
     /// </summary>
     private void applySpawnAndCharacter(PlayerController player, Vector3 spawnPos)
     {
-        player.gameObject.SetActive(true);
+        player.ActivarPersonajeRpc(spawnPos);
         Debug.LogWarning("[LEVEL GENERATOR] JUGADOR ACTIVADO");
-        player.transform.position = spawnPos;
-        applySelectedCharacter(player);
+        
+        //applySelectedCharacter(player);
     }
+
+    
 
     /// <summary>
     /// Calcula una posición de spawn válida dentro del penúltimo anillo activo.
