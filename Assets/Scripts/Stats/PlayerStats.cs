@@ -11,4 +11,5 @@ public class PlayerStats : CharacterStats
     [Range(0.1f, 2f)]
     [Tooltip("Cooldown entre ataques en segundos")]
     public float attackCooldown = 0.5f;
+    public bool select = false;
 }

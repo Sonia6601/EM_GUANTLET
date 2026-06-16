@@ -70,10 +70,17 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         string codeRoom = GeneracionCodigoSala(); //Se genera el código de la sala
         Debug.Log("[HOST]: Sala creada con codigo: " + codeRoom);
         GameManager.Instance.RoomCode = codeRoom;
+
+        // 1. Obtenemos el componente 'UnityTransport' del NetworkManager.
+        // El 'UnityTransport' es el motor/protocolo de bajo nivel que usa Unity Netcode para enviar y recibir datos en red local o a través de internet (gestiona los sockets UDP)
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+
+        // 2. Le indicamos a UnityTransport en qué Dirección IP y Puerto (7777 es el estándar) debe "abrir sus puertas".
+        // Como Host, esto significa: "Escucha a cualquier jugador que intente conectarse a mi IP local en el puerto 7777".
         transport.SetConnectionData(localIP, 7777);
 
         NetworkManager.Singleton.StartHost();
+        GameManager.Instance.mapConfigNetwork.Value = GameManager.Instance.SelectedMapIdx;
         GameManager.Instance.Code.Value = codeRoom;
 
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
@@ -81,13 +88,35 @@ public class MainMenuButtonsHandler : NetworkBehaviour
 
     private string GetLocalIPv4()
     {
-        return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(f => f.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).ToString();
+        try
+        {
+            // 1. Dns.GetHostName(): Obtiene el nombre del ordenador local (ej: "PC-Juan").
+            // 2. Dns.GetHostEntry(...): Busca en la red ese nombre y devuelve todas las interfaces de red de este PC.
+            // 3. AddressList.First(...): Filtra la lista para quedarse con la primera dirección que sea de tipo 'InterNetwork' (es decir, IPv4). Filtrar es necesario porque también puede devolver direcciones IPv6 o de red virtual.
+            // 4. ToString(): Convierte la IP encontrada a texto (ej: "192.168.1.33").
+            var ip = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(f => f.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+
+            if (ip == null)
+            {
+                Debug.Log("[MAINMENU] no se encontró ninguna IP IPv4. Usando localHost");
+                return "127.0.0.1";
+            }
+
+            return ip.ToString();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[MAINMENU] Error obteniendo IP: {e.Message}");
+            return "127.0.0.1";
+        }
+
     }
 
 
+    // Método que ejecuta el jugador que intenta unirse (Cliente) a una sala ya creada.
     public void StartClient()
     {
-        string codigoIntroducido = inputCode?.text.Trim().ToUpper();
+        string codigoIntroducido = inputCode?.text.Trim().ToUpper(); //pone con un buen formato el codigo (por si hay espacio o se pone en minuscula)
 
         if (string.IsNullOrEmpty(codigoIntroducido))
         {
@@ -98,39 +127,49 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         // Guardamos el código introducido para enviarlo al host tras conectar
         GameManager.Instance.RoomCode = codigoIntroducido;
 
+        // Recuperamos el componente de transporte para decirle al cliente a dónde debe conectarse.
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData("127.0.0.1", 7777); //la ip está configurada para que se pruebe desde el mismo ordenador solo
 
+        // OJO: Al usar 'GetLocalIPv4()' aquí, el cliente está calculando y usando su *propia* IP.
+        // Esto es útil SÓLO si probáis el juego abriendo dos ventanas en el mismo ordenador. 
+        // Si vais a jugar desde ordenadores distintos, no funcionará así, habría que usar la lógica de IP a Código.
+        var localIP = GetLocalIPv4();
+
+        transport.SetConnectionData(localIP, 7777); //la ip está configurada para que se pruebe desde el mismo ordenador solo
+
+        // Inicia los sistemas internos, conecta por UDP al servidor y sincroniza la partida actual.
         NetworkManager.Singleton.StartClient();
     }
 
+    // [Rpc(SendTo.Server)] indica que este método es una llamada de red de Cliente a Servidor.
+    // Aunque un Cliente llame a esta función en su propio código, la función se envía por red
+    // y se EJECUTA ÚNICAMENTE EN EL ORDENADOR DEL HOST (Servidor).
+    // Es el sustituto moderno del antiguo atributo [ServerRpc].
     [Rpc(SendTo.Server)]
     public void ValidarCodigoServerRpc(string codigoCliente, ulong clientId)
     {
         if (codigoCliente != GameManager.Instance.RoomCode)
         {
-            Debug.Log($"Cliente {clientId} tiene código incorrecto → kick");
-            NetworkManager.Singleton.DisconnectClient(clientId);
+            Debug.Log($"Cliente {clientId} tiene código incorrecto");
         }
         else
         {
-            Debug.Log($"Cliente {clientId} validado ✅");
+            Debug.Log($"Cliente {clientId} validado");
         }
     }
 
     private bool GUIcodigo()
     {
-        // Check 1
-        if (inputCode == null)
+        //Comprobaciones varias para saber por qué no funcionaba        if (inputCode == null)
         {
-            Debug.LogError("❌ inputCode es NULL → Asígnalo en el Inspector");
+            Debug.LogError("inputCode es NULL Asígnalo en el Inspector");
             return false;
         }
 
-        // Check 2
+
         if (GameManager.Instance == null)
         {
-            Debug.LogError("❌ GameManager.Instance es NULL → Falta el GameManager en la escena");
+            Debug.LogError("GameManager.Instance es NULL Falta el GameManager en la escena");
             return false;
         
         }
@@ -219,7 +258,10 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         if (GameManager.Instance == null) return;
 
         GameManager.Instance.SelectedMapConfig = availableMaps[index];
+        GameManager.Instance.SelectedMapIdx = index;
         Debug.Log($"[MainMenu] Mapa seleccionado: {availableMaps[index].mapName}");
+
+        
     }
 
     private string GeneracionCodigoSala()

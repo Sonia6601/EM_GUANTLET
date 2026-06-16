@@ -45,29 +45,28 @@ public class EnemyLemniscateController : EnemyController
     /// <summary>
     /// Calcula y aplica el desplazamiento del enemigo sobre una trayectoria en lemniscata.
     /// </summary>
-    protected override void MoveServer()
+    /// 
+    protected override void Move()
     {
-        if (!IsServer || isKnockback)
+        if (isKnockback)
+        {
+            lastPosition = transform.position;
             return;
+        }
 
         patrolTime += Time.fixedDeltaTime * moveSpeed;
 
         float x = Mathf.Sin(patrolTime) * patrolDistanceX;
         float y = Mathf.Sin(patrolTime) * Mathf.Cos(patrolTime) * patrolDistanceY;
 
-        Vector3 nextPosition = spawnPosition + new Vector3(x, y, 0);
+        Vector3 newPosition = spawnPosition + new Vector3(x, y, 0f);
+        rb.MovePosition(newPosition);
 
-        Vector2 direction = (nextPosition - lastPosition).normalized;
-        movement = direction;
+        Vector2 movementDir = newPosition - lastPosition;
+        float angle = Mathf.Atan2(movementDir.y, movementDir.x) * Mathf.Rad2Deg - 90f;
+        transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
-        rb.MovePosition(nextPosition);
-        lastPosition = nextPosition;
-
-        if (direction.sqrMagnitude > 0.01f)
-        {
-            float targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
-            transform.rotation = Quaternion.Euler(0, 0, targetAngle);
-        }
+        lastPosition = newPosition;
     }
 
     /// <summary>
