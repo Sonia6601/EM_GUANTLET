@@ -226,6 +226,8 @@ MonoBehaviour:
   stats: {fileID: 11400000, guid: ff37192e7cfcb0349ad1d099d2f93b2f, type: 2}
   Position:
     m_InternalValue: {x: 0, y: 0}
+  moveSpeedSync:
+    m_InternalValue: 0
 --- !u!114 &7020552734176444248
 MonoBehaviour:
   m_ObjectHideFlags: 0

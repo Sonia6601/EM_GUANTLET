@@ -1,7 +1,8 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 [RequireComponent(typeof(UniqueEntity))]
-public class EnemySpawner : MonoBehaviour
+public class EnemySpawner : NetworkBehaviour
 {
     [Header("Configuración del Spawner")]
     [SerializeField] private GameObject enemyPrefab;
@@ -25,10 +26,12 @@ public class EnemySpawner : MonoBehaviour
 
     /// <summary>
     /// Controla el intervalo de aparición y limita el número total de enemigos.
+    /// Solo se ejecuta en el servidor.
     /// </summary>
     private void Update()
     {
-        if (enemyPrefab == null || spawnedCount >= totalEnemies)
+        // Solo el servidor genera enemigos
+        if (!IsServer || enemyPrefab == null || spawnedCount >= totalEnemies)
             return;
 
         timer -= Time.deltaTime;
@@ -42,6 +45,7 @@ public class EnemySpawner : MonoBehaviour
 
     /// <summary>
     /// Instancia un enemigo en la posición del spawner o dentro del radio configurado.
+    /// El enemigo se registra en la red para que aparezca en todos los clientes.
     /// </summary>
     private void spawnEnemy()
     {
@@ -55,10 +59,23 @@ public class EnemySpawner : MonoBehaviour
             spawnPos += new Vector3(offset.x, offset.y, 0f);
         }
 
+        // 1. Instanciar el enemigo localmente en el servidor
         GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
 
+        // 2. Regenerar el ID único (tu lógica existente)
         UniqueEntity uniqueEntity = enemy.GetComponent<UniqueEntity>();
         if (uniqueEntity != null)
             uniqueEntity.RegenerateIdOnSpawn();
+
+        // 3. Registrar el enemigo en la red para que aparezca en todos los clientes
+        NetworkObject netObj = enemy.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.Spawn(true);
+        }
+        else
+        {
+            Debug.LogError($"[EnemySpawner] El prefab {enemyPrefab.name} NO TIENE NetworkObject. No se puede spawnear en red.");
+        }
     }
 }

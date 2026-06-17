@@ -14,33 +14,16 @@ public class EnemyChaseController : EnemyController
     private float wanderSpeed;
     private float wanderTimer;
 
-    /// <summary>
-    /// Inicializa la referencia al jugador y configura el estado inicial de vagabundeo.
-    /// </summary>
     protected override void Start()
     {
         base.Start();
 
-        if (GameManager.Instance != null)
+        if (IsServer)
         {
-            playerTransform = GameManager.Instance.LocalPlayerTransform;
-            GameEvents.OnLocalPlayerRegistered += onPlayerRegistered;
+            setNewWanderDirection();
         }
-
-        setNewWanderDirection();
     }
 
-    /// <summary>
-    /// Libera la suscripción al evento de registro del jugador al destruir el enemigo.
-    /// </summary>
-    private void OnDestroy()
-    {
-        GameEvents.OnLocalPlayerRegistered -= onPlayerRegistered;
-    }
-
-    /// <summary>
-    /// Carga y aplica las estadísticas de persecución y vagabundeo del enemigo.
-    /// </summary>
     protected override void LoadStats()
     {
         base.LoadStats();
@@ -66,14 +49,18 @@ public class EnemyChaseController : EnemyController
         }
     }
 
-    /// <summary>
-    /// Decide si el enemigo persigue al jugador o se mueve de forma aleatoria.
-    /// </summary>
-    /// 
-    protected override void Move()
+    protected override void MoveServer()
     {
-        if (isKnockback || playerTransform == null)
+        if (!IsServer || isKnockback)
             return;
+
+        FindClosestPlayer();
+
+        if (playerTransform == null)
+        {
+            wanderMovement();
+            return;
+        }
 
         float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position);
 
@@ -83,17 +70,6 @@ public class EnemyChaseController : EnemyController
             chasePlayer();
     }
 
-    /// <summary>
-    /// Actualiza la referencia del jugador cuando se registra el jugador local.
-    /// </summary>
-    private void onPlayerRegistered(PlayerController player)
-    {
-        playerTransform = player != null ? player.transform : null;
-    }
-
-    /// <summary>
-    /// Mueve al enemigo hacia el jugador y orienta su rotación en la dirección de avance.
-    /// </summary>
     private void chasePlayer()
     {
         Vector2 direction = (playerTransform.position - transform.position).normalized;
@@ -108,9 +84,6 @@ public class EnemyChaseController : EnemyController
         }
     }
 
-    /// <summary>
-    /// Ejecuta el desplazamiento aleatorio del enemigo cuando está fuera del rango de persecución.
-    /// </summary>
     private void wanderMovement()
     {
         wanderTimer -= Time.fixedDeltaTime;
@@ -127,9 +100,6 @@ public class EnemyChaseController : EnemyController
         }
     }
 
-    /// <summary>
-    /// Genera una nueva dirección y velocidad para el movimiento aleatorio del enemigo.
-    /// </summary>
     private void setNewWanderDirection()
     {
         if (Random.value < idleChance)
@@ -145,5 +115,31 @@ public class EnemyChaseController : EnemyController
         }
 
         wanderTimer = wanderChangeInterval;
+    }
+
+    private void FindClosestPlayer()
+    {
+        PlayerController[] allPlayers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+
+        float closestDistance = float.MaxValue;
+        Transform closestPlayer = null;
+
+        foreach (var player in allPlayers)
+        {
+            float distance = Vector2.Distance(transform.position, player.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestPlayer = player.transform;
+            }
+        }
+
+        playerTransform = closestPlayer;
+    }
+
+    protected override void spawnDrops()
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+        base.spawnDrops();
     }
 }

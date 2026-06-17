@@ -21,6 +21,7 @@ public class GameManager : NetworkBehaviour
     public NetworkManager _networkManager;
 
     [SerializeField] private GameObject _playerBall;
+    //[SerializeField] private GameObject _playerPrefab;
 
     public PlayerController LocalPlayerController { get; private set; }
     public Transform LocalPlayerTransform => LocalPlayerController != null ? LocalPlayerController.transform : null;
@@ -31,11 +32,20 @@ public class GameManager : NetworkBehaviour
     public MapConfig SelectedMapConfig { get; set; }
     public string RoomCode { get; set; }
 
+    public NetworkVariable<int> seed = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public NetworkVariable<int> mapConfigNetwork = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server); // 0 -> valor por defecto // .everyone -> lo pueden leer todos // .server -> solo lo puede modificar el server
+    public int SelectedMapIdx { get; set; } = 0;
+
+    [SerializeField] public MapConfig[] availableMaps;
+
     public NetworkVariable<Unity.Collections.FixedString64Bytes> Code = new NetworkVariable<Unity.Collections.FixedString64Bytes>(
             default,
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server
         );
+
+    
 
     [SerializeField] private float delayBeforeScene = 0.5f;
 
@@ -85,40 +95,46 @@ public class GameManager : NetworkBehaviour
     private void onSceneLoadCompleted(string sceneName, LoadSceneMode loadSceneMode,
     List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
-        UnityEngine.Debug.Log($"[GameManager] onSceneLoadCompleted: escena={sceneName}, clientes={clientsCompleted.Count}");
+        //if / !_networkManager.IsServer) return;
 
-        if (sceneName != SceneNames.CharSelection) return;
         if (!_networkManager.IsServer) return;
+        UnityEngine.Debug.Log("[GAME MANAGER] Escena cargada: " + sceneName);
 
-        foreach (ulong clientId in clientsCompleted)
+        if (sceneName == SceneNames.CharSelection)
         {
-            var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
 
-            // Only skip if it already has PlayerState (i.e. it's our prefab)
-            if (existing != null && existing.GetComponent<PlayerState>() != null)
+            foreach (ulong clientId in clientsCompleted)
             {
-                UnityEngine.Debug.Log($"[GameManager] Cliente {clientId} ya tiene PlayerState, no se vuelve a spawnear.");
-                continue;
+                var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
+
+                if (existing == null)
+                {
+                    var playerObject = Instantiate(_playerBall);
+                    NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+                    networkObject.SpawnAsPlayerObject(clientId);
+                }
+
+                //// Only skip if it already has PlayerState (i.e. it's our prefab)
+                //if (existing != null && existing.GetComponent<PlayerState>() != null)
+                //{
+                //    UnityEngine.Debug.Log($"[GameManager] Cliente {clientId} ya tiene PlayerState, no se vuelve a spawnear.");
+                //    continue;
+                //}
+
+                //// Despawn the wrong prefab if present
+                //if (existing != null)
+                //{
+                //    UnityEngine.Debug.LogWarning($"[GameManager] Cliente {clientId} tiene PlayerObject sin PlayerState, despawneando.");
+                //    existing.Despawn();
+                //}
+
+                //var playerObject = Instantiate(_playerBall);
+                //NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+                //networkObject.SpawnAsPlayerObject(clientId);
+                
+                
+
             }
-
-            // Despawn the wrong prefab if present
-            if (existing != null)
-            {
-                UnityEngine.Debug.LogWarning($"[GameManager] Cliente {clientId} tiene PlayerObject sin PlayerState, despawneando.");
-                existing.Despawn();
-            }
-
-            var playerObject = Instantiate(_playerBall);
-            NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
-
-            if (networkObject == null)
-            {
-                UnityEngine.Debug.LogError($"[GameManager] El prefab _playerBall NO tiene componente NetworkObject!");
-                continue;
-            }
-
-            networkObject.SpawnAsPlayerObject(clientId);
-            UnityEngine.Debug.Log($"[GameManager] Spawneado PlayerObject para cliente {clientId}.");
         }
 
 
@@ -392,8 +408,9 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Guarda el personaje seleccionado, reinicia datos y carga el nivel de juego.
     /// </summary>
-    public void StartGame(PlayerStats selectedCharacter)
+    public void StartGame_(PlayerStats selectedCharacter)
     {
+
         if (selectedCharacter == null)
         {
             UnityEngine.Debug.LogError("[GameManager] StartGame llamado sin personaje seleccionado.");
@@ -404,16 +421,19 @@ public class GameManager : NetworkBehaviour
         SelectedCharacterStats = selectedCharacter;
         ResetGameData();
 
-        SceneManager.LoadScene(SceneNames.PlaygroundLevel);
+        NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
     }
 
     /// <summary>
     /// Guarda mapa y personaje seleccionados e inicia la partida.
     /// </summary>
-    public void StartGame(PlayerStats selectedCharacter, MapConfig selectedMap)
+    public void StartGame(PlayerStats selectedCharacter)
     {
-        SelectedMapConfig = selectedMap;
-        StartGame(selectedCharacter);
+        if (IsServer)
+        {
+            seed.Value = Random.Range(1, int.MaxValue); //0 -> no asignado
+        }
+        StartGame_(selectedCharacter);
     }
 
     /// <summary>
@@ -421,6 +441,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public void TriggerGameOver()
     {
+        UnityEngine.Debug.Log($"[TriggerGameOver] Llamado desde:\n{System.Environment.StackTrace}");
         UnityEngine.Debug.Log($"[GameManager] Game Over. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
         Invoke(nameof(loadDeadScene), delayBeforeScene);
     }
@@ -434,6 +455,8 @@ public class GameManager : NetworkBehaviour
         {
             GameEvents.ClearSceneEvents();
         }
+
+        
     }
 
     /// <summary>
@@ -467,6 +490,27 @@ public class GameManager : NetworkBehaviour
     private void onPlayerDeath()
     {
         UnityEngine.Debug.Log($"[GameManager] Jugador muerto. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
+    }
+    [Header("Personajes Disponibles")]
+    [SerializeField] private PlayerStats[] availableCharacters; // <-- Añade esto
+
+    // Una función rápida para obtener el índice del personaje seleccionado
+    public int GetSelectedCharacterIndex()
+    {
+        if (SelectedCharacterStats == null) return 0;
+        for (int i = 0; i < availableCharacters.Length; i++)
+        {
+            if (availableCharacters[i] == SelectedCharacterStats) return i;
+        }
+        return 0;
+    }
+
+    // Una función para obtener las estadísticas usando el índice que viaja por la red
+    public PlayerStats GetCharacterStatsByIndex(int index)
+    {
+        if (availableCharacters == null || index < 0 || index >= availableCharacters.Length)
+            return availableCharacters[0]; // Fallback al primero
+        return availableCharacters[index];
     }
 
 }

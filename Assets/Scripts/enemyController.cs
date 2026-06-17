@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 public abstract class EnemyController : CharController
 {
@@ -68,7 +69,7 @@ public abstract class EnemyController : CharController
         if (GameManager.Instance != null)
             GameManager.Instance.AddEnemyKill();
 
-        spawnDrops();
+        
     }
 
     /// <summary>
@@ -79,8 +80,22 @@ public abstract class EnemyController : CharController
         if (health <= 0)
         {
             Die();
-            Destroy(gameObject, 1.2f);
+            DespawnServerRpc();
         }
+    }
+
+    [ServerRpc (RequireOwnership = false)]
+    private void DespawnServerRpc()
+    {
+        SpawnDropsClientRpc(transform.position);
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null) netObj.Despawn(true);
+    }
+
+    [ClientRpc]
+    private void SpawnDropsClientRpc(Vector3 posicionEnemigo)
+    {
+        spawnDrops();
     }
 
     /// <summary>
@@ -124,6 +139,13 @@ public abstract class EnemyController : CharController
                 GameObject drop = Instantiate(dropPrefab, dropPosition, Quaternion.identity);
                 UniqueEntity uniqueEntity = drop.GetComponent<UniqueEntity>();
                 if (uniqueEntity != null) uniqueEntity.RegenerateIdOnSpawn();
+
+                if (NetworkManager.Singleton.IsServer)
+                {
+                    NetworkObject netObj = drop.GetComponent<NetworkObject>();
+                    if (netObj != null) netObj.Spawn(true);
+                }
+
             }
         }
     }

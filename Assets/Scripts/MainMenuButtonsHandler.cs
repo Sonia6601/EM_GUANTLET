@@ -80,6 +80,7 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         transport.SetConnectionData(localIP, 7777);
 
         NetworkManager.Singleton.StartHost();
+        GameManager.Instance.mapConfigNetwork.Value = GameManager.Instance.SelectedMapIdx;
         GameManager.Instance.Code.Value = codeRoom;
 
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
@@ -87,11 +88,28 @@ public class MainMenuButtonsHandler : NetworkBehaviour
 
     private string GetLocalIPv4()
     {
-        // 1. Dns.GetHostName(): Obtiene el nombre del ordenador local (ej: "PC-Juan").
-        // 2. Dns.GetHostEntry(...): Busca en la red ese nombre y devuelve todas las interfaces de red de este PC.
-        // 3. AddressList.First(...): Filtra la lista para quedarse con la primera dirección que sea de tipo 'InterNetwork' (es decir, IPv4). Filtrar es necesario porque también puede devolver direcciones IPv6 o de red virtual.
-        // 4. ToString(): Convierte la IP encontrada a texto (ej: "192.168.1.33").
-        return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(f => f.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork).ToString();
+        try
+        {
+            // 1. Dns.GetHostName(): Obtiene el nombre del ordenador local (ej: "PC-Juan").
+            // 2. Dns.GetHostEntry(...): Busca en la red ese nombre y devuelve todas las interfaces de red de este PC.
+            // 3. AddressList.First(...): Filtra la lista para quedarse con la primera dirección que sea de tipo 'InterNetwork' (es decir, IPv4). Filtrar es necesario porque también puede devolver direcciones IPv6 o de red virtual.
+            // 4. ToString(): Convierte la IP encontrada a texto (ej: "192.168.1.33").
+            var ip = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(f => f.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+
+            if (ip == null)
+            {
+                Debug.Log("[MAINMENU] no se encontró ninguna IP IPv4. Usando localHost");
+                return "127.0.0.1";
+            }
+
+            return ip.ToString();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[MAINMENU] Error obteniendo IP: {e.Message}");
+            return "127.0.0.1";
+        }
+
     }
 
 
@@ -240,7 +258,10 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         if (GameManager.Instance == null) return;
 
         GameManager.Instance.SelectedMapConfig = availableMaps[index];
+        GameManager.Instance.SelectedMapIdx = index;
         Debug.Log($"[MainMenu] Mapa seleccionado: {availableMaps[index].mapName}");
+
+        
     }
 
     private string GeneracionCodigoSala()
