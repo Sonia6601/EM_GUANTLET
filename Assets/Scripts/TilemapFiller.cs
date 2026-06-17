@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -177,6 +178,12 @@ public class TilemapFiller : MonoBehaviour
             GameObject spawner = Instantiate(enemySpawners[i], spawnPos, Quaternion.identity);
             UniqueEntity uniqueEntity = spawner.GetComponent<UniqueEntity>();
             if (uniqueEntity != null) uniqueEntity.RegenerateIdOnSpawn();
+
+            if (NetworkManager.Singleton.IsServer)
+            {
+                NetworkObject netObj = spawner.GetComponent<NetworkObject>();
+                if (netObj != null) netObj.Spawn(true);
+            }
         }
     }
 
@@ -400,6 +407,13 @@ public class TilemapFiller : MonoBehaviour
 
             UniqueEntity uniqueEntity = spawner.GetComponent<UniqueEntity>();
             if (uniqueEntity != null) uniqueEntity.RegenerateIdOnSpawn();
+
+            if (NetworkManager.Singleton.IsServer)
+            {
+                NetworkObject netObj = spawner.GetComponent<NetworkObject>();
+                if (netObj != null) netObj.Spawn(true);
+            }
+
         }
     }
 }

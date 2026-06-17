@@ -160,6 +160,23 @@ public class GameManager : NetworkBehaviour
 
             }
         }
+
+
+        //else if (sceneName == SceneNames.PlaygroundLevel)
+        //{
+
+        //    foreach (ulong clientId in clientsCompleted)
+        //    {
+        //        var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
+
+        //        if (existing == null)
+        //        {
+        //            var playerObject = Instantiate(_playerBall);
+        //            NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+        //            networkObject.SpawnAsPlayerObject(clientId);
+        //        }
+        //    }
+        //}
     }
 
 
@@ -206,18 +223,18 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Suscribe callbacks de eventos persistentes del juego.
     /// </summary>
-    private void OnEnable()
+   /* private void OnEnable()
     {
         GameEvents.OnPlayerDied += onPlayerDeath;
-    }
+    }*/
 
     /// <summary>
     /// Desuscribe callbacks de eventos persistentes del juego.
     /// </summary>
-    private void OnDisable()
-    {
-        GameEvents.OnPlayerDied -= onPlayerDeath;
-    }
+    //private void OnDisable()
+    //{
+    //    GameEvents.OnPlayerDied -= onPlayerDeath;
+    //}
 
     [Rpc(SendTo.ClientsAndHost)]
     private void ClientAndHostRpc(int value, ulong sourceNetworkObjectId)
@@ -481,14 +498,6 @@ public class GameManager : NetworkBehaviour
 
     private IEnumerator DespawnAndLoadScene()
     {
-        var allPlayers = GameObject.FindGameObjectsWithTag("Player");
-        foreach (var player in allPlayers)
-        {
-            if (player.TryGetComponent<NetworkObject>(out var netObj))
-            {
-                netObj.Despawn();
-            }
-        }
 
         // Esperar 1 frame (mínimo)
         yield return null;
@@ -636,12 +645,24 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Inicia el flujo de fin de partida por muerte del jugador.
     /// </summary>
-    public void TriggerGameOver()
+    //public void TriggerGameOver()
+    //{
+    //    UnityEngine.Debug.Log($"[TriggerGameOver] Llamado desde:\n{System.Environment.StackTrace}");
+    //    UnityEngine.Debug.Log($"[GameManager] Game Over. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
+    //    Invoke(nameof(ShowDeadUI), delayBeforeScene);
+    //}
+
+    private void ShowDeadUI()
     {
-        UnityEngine.Debug.Log($"[TriggerGameOver] Llamado desde:\n{System.Environment.StackTrace}");
-        UnityEngine.Debug.Log($"[GameManager] Game Over. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
-        Invoke(nameof(loadDeadScene), delayBeforeScene);
+
+        // Opción rápida: Si tienes una pantalla de muerte en tu Canvas actual, actívala.
+        // Ej: MenuMuerteUI.SetActive(true);
+
+        // Disparamos un evento global para que el Canvas de tu escena PlaygroundLevel 
+        // sepa que tiene que oscurecer la pantalla y mostrar los botones de "Salir".
+        GameEvents.PlayerDied();
     }
+
 
     /// <summary>
     /// Limpia los eventos de escena cuando se descarga el nivel jugable.
@@ -659,10 +680,10 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Carga la escena de derrota del jugador.
     /// </summary>
-    private void loadDeadScene()
-    {
-        SceneManager.LoadScene(SceneNames.DeadScene);
-    }
+    //private void loadDeadScene()
+    //{
+    //    SceneManager.LoadScene(SceneNames.DeadScene);
+    //}
 
     /// <summary>
     /// Registra logs de victoria y programa la carga de la escena final.
@@ -684,10 +705,11 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Registra en consola el estado del juego cuando el jugador muere.
     /// </summary>
-    private void onPlayerDeath()
+    /*private void onPlayerDeath()
     {
         UnityEngine.Debug.Log($"[GameManager] Jugador muerto. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
-    }
+    }*/
+
     [Header("Personajes Disponibles")]
     [SerializeField] private PlayerStats[] availableCharacters; // <-- Añade esto
 

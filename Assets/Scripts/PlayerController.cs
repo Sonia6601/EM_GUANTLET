@@ -25,6 +25,8 @@ public class PlayerController : CharController
     NetworkVariableReadPermission.Everyone,
     NetworkVariableWritePermission.Owner
 );
+    private NetworkVariable<int> initialHealth_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<int> health_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     /// <summary>
     /// Inicializa controles de entrada y registra el jugador local en el gestor global.
@@ -51,6 +53,7 @@ public class PlayerController : CharController
         base.OnNetworkSpawn();
 
         characterIndexSync.OnValueChanged += OnCharacterIndexChanged;
+        health_online.OnValueChanged += OnHealthChanged;
         Debug.LogWarning("[ON NETWORK SPAWN] VOY A HACER LA CONEXION RED");
         //gameObject.SetActive(true);
         
@@ -81,7 +84,7 @@ public class PlayerController : CharController
         {
             //if (sr != null) sr.enabled = true;
             // Dispara eventos iniciales para actualizar el HUD
-            GameEvents.HealthChanged(health);
+            GameEvents.HealthChanged(health_online.Value);
             GameEvents.KeysChanged();
             GameEvents.DiamondsChanged();
 
@@ -104,11 +107,22 @@ public class PlayerController : CharController
         if (statsAsignadas == null) return;
 
         stats = statsAsignadas;
-        // Le aplicamos las stats mecánicas al CharController base
-        damageToEnemy = statsAsignadas.attackDamage;
-        attackCooldown = statsAsignadas.attackCooldown;
-        initialHealth = statsAsignadas.maxHealth;
-        if (!IsSpawned) health = initialHealth; // Solo inicializa vida si está naciendo
+
+        if (IsOwner)
+        {
+            // Le aplicamos las stats mecánicas al CharController base
+            damageToEnemy = statsAsignadas.attackDamage;
+            attackCooldown = statsAsignadas.attackCooldown;
+            initialHealth = statsAsignadas.maxHealth;
+        }
+
+        if (!IsSpawned) health_online = initialHealth_online; // Solo inicializa vida si está naciendo
+
+        if (IsServer)
+        {
+            health_online.Value = initialHealth;
+            health = health_online.Value; // Sincroniza la variable local del CharController base
+        }
 
         // Cambiamos el color/animaciones en el renderizador
         if (statsAsignadas.animatorController != null && animator != null)
@@ -122,10 +136,24 @@ public class PlayerController : CharController
         if (sr != null) sr.enabled = true;
     }
 
+    private void OnHealthChanged(int previousValue, int newValue)
+    {
+        health = newValue;
+
+        if (IsOwner)
+        {
+            GameEvents.HealthChanged(newValue);
+
+        }
+
+    }
+
+
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
         characterIndexSync.OnValueChanged -= OnCharacterIndexChanged;
+        health_online.OnValueChanged -= OnHealthChanged;
     }
 
 
@@ -134,7 +162,7 @@ public class PlayerController : CharController
     /// </summary>
     protected override void Start()
     {
-        base.Start();
+        base.Start(); 
 
         gameObject.SetActive(false);
         Debug.LogWarning("[START PLAYER CONTROLLER] JUGADOR DESACTIVADO");
@@ -148,9 +176,16 @@ public class PlayerController : CharController
     protected override void Update()
     {
 
-
         if (!IsOwner) return; //si no eres el jugador no puedes mover el jugador
+        if (!IsSpawned || health_online.Value == 0) return;
 
+        if (isDead)
+        {
+            movement = Vector2.zero;
+            if (rb != null) rb.linearVelocity = Vector2.zero;
+            animator.SetFloat("speed", 0f);
+            return;
+        }
 
         animator.SetFloat("speed", movement.sqrMagnitude);
 
@@ -160,6 +195,7 @@ public class PlayerController : CharController
             transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
         }
 
+        if (!IsSpawned || health_online.Value == 0) return; //si aun no se ha spawneado no se mira si ha muerto (puede aparecer muerto por lag)
         checkDeath();
     }
 
@@ -353,7 +389,7 @@ public class PlayerController : CharController
         // Dispara evento de muerte
         GameEvents.PlayerDied();
 
-        GameManager.Instance?.TriggerGameOver();
+        //GameManager.Instance?.TriggerGameOver();
 
     }
 
@@ -362,10 +398,19 @@ public class PlayerController : CharController
     /// </summary>
     public override void TakeDamage(int amount, Vector2 knockbackDir)
     {
+        if (isDead) return;
+        if (amount <= 0) return;
+
+        if (IsServer)
+        {
+            health_online.Value -= amount;
+            health = health_online.Value;
+        }
+
         base.TakeDamage(amount, knockbackDir);
 
         // Dispara evento de cambio de salud
-        GameEvents.HealthChanged(health);
+        //GameEvents.HealthChanged(health_online.Value);
     }
 
     /// <summary>
@@ -429,8 +474,8 @@ public class PlayerController : CharController
     /// </summary>
     private void checkDeath()
     {
-        //Debug.Log($"[checkDeath] health: {health} | isDead: {isDead}");
-        if (health <= 0 && !isDead)
+        //Debug.Log($"[checkDeath] health_online: {health_online} | isDead: {isDead}");
+        if (health_online.Value <= 0 && !isDead)
         {
             Die();
         }
@@ -441,6 +486,7 @@ public class PlayerController : CharController
     /// </summary>
     private void onAttack(InputAction.CallbackContext context)
     {
+        if (!IsOwner || isDead) return;
         animator.SetTrigger("Attack");
         IsAttacking = true;
         Invoke(nameof(endAttack), attackCooldown);
@@ -448,13 +494,13 @@ public class PlayerController : CharController
 
     private void OnMovePerformed(InputAction.CallbackContext ctx)
     {
-        if (!IsOwner) return;
+        if (!IsOwner || isDead) return;
         movement = ctx.ReadValue<Vector2>();
     }
 
     private void OnMoveCanceled(InputAction.CallbackContext ctx)
     {
-        if (!IsOwner) return;
+        if (!IsOwner || isDead) return;
         movement = Vector2.zero;
     }
 
