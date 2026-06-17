@@ -53,6 +53,8 @@ public class GameManager : NetworkBehaviour
 
     public NetworkVariable<int> clientes = new NetworkVariable<int>();
 
+    private readonly HashSet<ulong> disconnectedClientsHandled = new HashSet<ulong>();
+
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
     /// </summary>
@@ -74,29 +76,38 @@ public class GameManager : NetworkBehaviour
     public void Start()
     {
         _networkManager = NetworkManager.Singleton;
-    
-            if (_networkManager == null)
-            {
-                UnityEngine.Debug.LogError("[GameManager] Start: _networkManager es NULL. Nada funcionará.");
-                return;
-            }
 
-            if (_networkManager.NetworkConfig.Prefabs.Prefabs.Count > 0)
-                _playerBall = _networkManager.NetworkConfig.Prefabs.Prefabs[0].Prefab;
+        if (_networkManager == null)
+        {
+            UnityEngine.Debug.LogError("[GameManager] Start: _networkManager es NULL. Nada funcionará.");
+            return;
+        }
 
-            _networkManager.OnServerStarted += onServerStarted;
-            _networkManager.OnClientConnectedCallback += onClientConnected;
-            _networkManager.OnClientDisconnectCallback += onClientDisconnect;
-    
-            UnityEngine.Debug.Log("[GameManager] Start: Callbacks suscritos correctamente.");
+        if (_networkManager.NetworkConfig.Prefabs.Prefabs.Count > 0)
+        {
+            _playerBall = _networkManager.NetworkConfig.Prefabs.Prefabs[0].Prefab;
+        }
+
+        _networkManager.OnServerStarted -= onServerStarted;
+        _networkManager.OnServerStarted += onServerStarted;
+
+        _networkManager.OnClientConnectedCallback -= onClientConnected;
+        _networkManager.OnClientConnectedCallback += onClientConnected;
+
+        _networkManager.OnClientDisconnectCallback -= onClientDisconnect;
+        _networkManager.OnClientDisconnectCallback += onClientDisconnect;
+
+        UnityEngine.Debug.Log("[GameManager] Start: Callbacks suscritos correctamente.");
 
     }
 
-    private void onSceneLoadCompleted(string sceneName, LoadSceneMode loadSceneMode,
-    List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
+    private void onSceneLoadCompleted(
+        string sceneName,
+        LoadSceneMode loadSceneMode,
+        List<ulong> clientsCompleted,
+        List<ulong> clientsTimedOut)
     {
-        //if / !_networkManager.IsServer) return;
-
+        if (_networkManager == null) return;
         if (!_networkManager.IsServer) return;
         UnityEngine.Debug.Log("[GAME MANAGER] Escena cargada: " + sceneName);
 
@@ -105,12 +116,25 @@ public class GameManager : NetworkBehaviour
 
             foreach (ulong clientId in clientsCompleted)
             {
+                if (!_networkManager.ConnectedClients.ContainsKey(clientId))
+                {
+                    continue;
+                }
+
                 var existing = _networkManager.ConnectedClients[clientId].PlayerObject;
 
                 if (existing == null)
                 {
                     var playerObject = Instantiate(_playerBall);
                     NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+
+                    if (networkObject == null)
+                    {
+                        UnityEngine.Debug.LogError("[GameManager] El prefab _playerBall no tiene NetworkObject.");
+                        Destroy(playerObject);
+                        continue;
+                    }
+
                     networkObject.SpawnAsPlayerObject(clientId);
                 }
 
@@ -159,9 +183,41 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Libera suscripciones globales al destruir el gestor.
     /// </summary>
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         SceneManager.sceneUnloaded -= onSceneUnloaded;
+
+        if (_networkManager != null)
+        {
+            _networkManager.OnServerStarted -= onServerStarted;
+            _networkManager.OnClientConnectedCallback -= onClientConnected;
+            _networkManager.OnClientDisconnectCallback -= onClientDisconnect;
+
+            if (_networkManager.SceneManager != null)
+            {
+                _networkManager.SceneManager.OnLoadEventCompleted -= onSceneLoadCompleted;
+            }
+        }
+
+        base.OnDestroy();
+    }
+
+    /// <summary>
+    /// Si un cliente cierra la aplicación, intenta avisar al servidor antes de desconectarse.
+    /// </summary>
+    private void OnApplicationQuit()
+    {
+        if (NetworkManager.Singleton == null) return;
+
+        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
+        {
+            UnityEngine.Debug.Log("[GameManager] Cliente cerrando aplicación. Avisando al servidor...");
+
+            if (IsSpawned)
+            {
+                NotifyClientLeavingServerRpc(NetworkManager.Singleton.LocalClientId);
+            }
+        }
     }
 
     /// <summary>
@@ -201,15 +257,24 @@ public class GameManager : NetworkBehaviour
     {
         print("El servidor está listo");
         clientes.Value = 0;
-        _networkManager.SceneManager.OnLoadEventCompleted += onSceneLoadCompleted;
+        disconnectedClientsHandled.Clear();
 
+        if (_networkManager != null && _networkManager.SceneManager != null)
+        {
+            _networkManager.SceneManager.OnLoadEventCompleted -= onSceneLoadCompleted;
+            _networkManager.SceneManager.OnLoadEventCompleted += onSceneLoadCompleted;
+        }
     }
 
-    // Evento cuando un cliente se ha conectado
+    /// <summary>
+    /// Evento cuando un cliente se ha conectado.
+    /// </summary>
     private void onClientConnected(ulong clientId)
     {
-        // Solo si eres el servidor decides instanciar a los clientes
+        if (_networkManager == null) return;
         if (!_networkManager.IsServer) return;
+
+        disconnectedClientsHandled.Remove(clientId);
 
         clientes.Value += 1;
         UnityEngine.Debug.Log("Clientes conectados: " + clientes.Value);
@@ -220,23 +285,83 @@ public class GameManager : NetworkBehaviour
         {
             var playerObject = Instantiate(_playerBall);
             NetworkObject networkObject = playerObject.GetComponent<NetworkObject>();
+
+            if (networkObject == null)
+            {
+                UnityEngine.Debug.LogError("[GameManager] El prefab _playerBall no tiene NetworkObject.");
+                Destroy(playerObject);
+                return;
+            }
+
             networkObject.SpawnAsPlayerObject(clientId);
         }
     }
 
+    /// <summary>
+    /// Evento cuando un cliente o el host se desconecta.
+    /// CLIENTE se desconecta: el servidor despawnea sus objetos y la partida sigue.
+    /// HOST se desconecta: los clientes vuelven al menú principal.
+    /// </summary>
     private void onClientDisconnect(ulong clientId)
     {
-        StartCoroutine(HandleDisconnect());
+        UnityEngine.Debug.Log($"[DISCONNECT TEST] onClientDisconnect llamado. clientId={clientId}");
+
+        if (_networkManager == null)
+        {
+            UnityEngine.Debug.LogWarning("[DISCONNECT TEST] _networkManager es null.");
+            return;
+        }
+
+        UnityEngine.Debug.Log(
+            $"[DISCONNECT TEST] IsServer={_networkManager.IsServer}, " +
+            $"IsClient={_networkManager.IsClient}, " +
+            $"LocalClientId={_networkManager.LocalClientId}"
+        );
+
+        if (!_networkManager.IsServer)
+        {
+            if (clientId == NetworkManager.ServerClientId)
+            {
+                HandleHostDisconnected();
+            }
+
+            return;
+        }
+
+        if (clientId != NetworkManager.ServerClientId)
+        {
+            HandleClientDisconnected(clientId);
+        }
     }
 
-    private IEnumerator HandleDisconnect()
+    /// <summary>
+    /// El cliente llama a este RPC antes de cerrarse para que el servidor gestione su salida.
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void NotifyClientLeavingServerRpc(ulong leavingClientId)
     {
-        // Espera un frame (puedes aumentar a 0.1f si sigue fallando)
-        yield return null;
+        UnityEngine.Debug.Log($"[GameManager] NotifyClientLeavingServerRpc recibido. Cliente que se va: {leavingClientId}");
 
-        var allPlayers = GameObject.FindGameObjectsWithTag("Player");
+        HandleClientDisconnected(leavingClientId);
+    }
 
-        /*int humanosVivos = 0;
+    /// <summary>
+    /// Gestiona la desconexión de un cliente normal.
+    /// </summary>
+    private void HandleClientDisconnected(ulong clientId)
+    {
+        if (!IsServer) return;
+
+        if (disconnectedClientsHandled.Contains(clientId))
+        {
+            UnityEngine.Debug.Log($"[GameManager] La desconexión del cliente {clientId} ya fue gestionada.");
+            return;
+        }
+
+        disconnectedClientsHandled.Add(clientId);
+
+        UnityEngine.Debug.Log($"[GameManager] Cliente desconectado: {clientId}");
+ /*int humanosVivos = 0;
         int zombiesVivos = 0;
 
         foreach (var player in allPlayers)
@@ -268,9 +393,88 @@ public class GameManager : NetworkBehaviour
 
         clientes.Value = Mathf.Max(0, clientes.Value - 1);
         UnityEngine.Debug.Log("Clientes conectados: " + clientes.Value);
+
+        DespawnObjectsOwnedByClient(clientId);
+
+        GameEvents.NetworkStatusMessage("Un jugador abandonó");
+        ShowNetworkMessageClientRpc("Un jugador abandonó");
     }
 
+    /// <summary>
+    /// Gestiona la desconexión del host desde el punto de vista de los clientes.
+    /// </summary>
+    private void HandleHostDisconnected()
+    {
+        UnityEngine.Debug.Log("[GameManager] El host abandonó la partida.");
 
+        GameEvents.NetworkStatusMessage("El host abandonó");
+
+        StartCoroutine(ReturnToMainMenuAfterHostDisconnect());
+    }
+
+    /// <summary>
+    /// Espera para que se vea el mensaje, cierra la conexión y vuelve al menú.
+    /// </summary>
+    private IEnumerator ReturnToMainMenuAfterHostDisconnect()
+    {
+        yield return new WaitForSeconds(2f);
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        SceneManager.LoadScene(SceneNames.MainMenu);
+    }
+
+    /// <summary>
+    /// Despawnea todos los objetos de red que pertenecían al cliente desconectado.
+    /// </summary>
+    private void DespawnObjectsOwnedByClient(ulong clientId)
+    {
+        if (_networkManager == null || _networkManager.SpawnManager == null) return;
+        if (!_networkManager.IsServer) return;
+
+        UnityEngine.Debug.Log($"[GameManager] Buscando objetos del cliente desconectado {clientId}");
+
+        List<NetworkObject> objectsToDespawn = new List<NetworkObject>();
+
+        foreach (NetworkObject networkObject in _networkManager.SpawnManager.SpawnedObjectsList)
+        {
+            if (networkObject == null) continue;
+
+            UnityEngine.Debug.Log(
+                $"[GameManager] Revisando objeto: {networkObject.name} | " +
+                $"OwnerClientId={networkObject.OwnerClientId} | " +
+                $"IsPlayerObject={networkObject.IsPlayerObject}"
+            );
+
+            if (networkObject.OwnerClientId == clientId)
+            {
+                objectsToDespawn.Add(networkObject);
+            }
+        }
+
+        foreach (NetworkObject networkObject in objectsToDespawn)
+        {
+            if (networkObject != null && networkObject.IsSpawned)
+            {
+                UnityEngine.Debug.Log($"[GameManager] Despawneando objeto del cliente {clientId}: {networkObject.name}");
+                networkObject.Despawn(true);
+            }
+        }
+
+        UnityEngine.Debug.Log($"[GameManager] Total objetos despawneados del cliente {clientId}: {objectsToDespawn.Count}");
+    }
+
+    /// <summary>
+    /// Muestra un mensaje de red en todos los clientes.
+    /// </summary>
+    [ClientRpc]
+    private void ShowNetworkMessageClientRpc(string message)
+    {
+        GameEvents.NetworkStatusMessage(message);
+    }
 
     public void CheckAllReady()
     {
@@ -282,7 +486,9 @@ public class GameManager : NetworkBehaviour
         {
             var player = client.PlayerObject?.GetComponent<PlayerState>();
             if (player == null || !player.isReady.Value)
+            {
                 return; // Al menos uno no está listo
+            }
         }
 
         // Todos están listos, cambiamos de escena
@@ -500,16 +706,29 @@ public class GameManager : NetworkBehaviour
         if (SelectedCharacterStats == null) return 0;
         for (int i = 0; i < availableCharacters.Length; i++)
         {
-            if (availableCharacters[i] == SelectedCharacterStats) return i;
+            if (availableCharacters[i] == SelectedCharacterStats)
+            {
+                return i;
+            }
         }
+
         return 0;
     }
 
     // Una función para obtener las estadísticas usando el índice que viaja por la red
     public PlayerStats GetCharacterStatsByIndex(int index)
     {
-        if (availableCharacters == null || index < 0 || index >= availableCharacters.Length)
+        if (availableCharacters == null || availableCharacters.Length == 0)
+        {
+            UnityEngine.Debug.LogWarning("[GameManager] No hay personajes configurados en availableCharacters.");
+            return SelectedCharacterStats;
+        }
+
+        if (index < 0 || index >= availableCharacters.Length)
+        {
             return availableCharacters[0]; // Fallback al primero
+        }
+
         return availableCharacters[index];
     }
 
