@@ -176,9 +176,16 @@ public class PlayerController : CharController
     protected override void Update()
     {
 
-
         if (!IsOwner) return; //si no eres el jugador no puedes mover el jugador
+        if (!IsSpawned || health_online.Value == 0) return;
 
+        if (isDead)
+        {
+            movement = Vector2.zero;
+            if (rb != null) rb.linearVelocity = Vector2.zero;
+            animator.SetFloat("speed", 0f);
+            return;
+        }
 
         animator.SetFloat("speed", movement.sqrMagnitude);
 
@@ -382,7 +389,7 @@ public class PlayerController : CharController
         // Dispara evento de muerte
         GameEvents.PlayerDied();
 
-        GameManager.Instance?.TriggerGameOver();
+        //GameManager.Instance?.TriggerGameOver();
 
     }
 
@@ -479,6 +486,7 @@ public class PlayerController : CharController
     /// </summary>
     private void onAttack(InputAction.CallbackContext context)
     {
+        if (!IsOwner || isDead) return;
         animator.SetTrigger("Attack");
         IsAttacking = true;
         Invoke(nameof(endAttack), attackCooldown);
@@ -486,13 +494,13 @@ public class PlayerController : CharController
 
     private void OnMovePerformed(InputAction.CallbackContext ctx)
     {
-        if (!IsOwner) return;
+        if (!IsOwner || isDead) return;
         movement = ctx.ReadValue<Vector2>();
     }
 
     private void OnMoveCanceled(InputAction.CallbackContext ctx)
     {
-        if (!IsOwner) return;
+        if (!IsOwner || isDead) return;
         movement = Vector2.zero;
     }
 
