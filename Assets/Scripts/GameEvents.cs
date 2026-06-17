@@ -10,6 +10,8 @@ public static class GameEvents
     public static event Action OnPlayerDied;
     public static event Action OnVictory;
 
+    public static event Action<string> OnNetworkStatusMessage;
+
     /// <summary>
     /// Notifica un cambio en la salud del jugador.
     /// </summary>
@@ -19,7 +21,7 @@ public static class GameEvents
     }
 
     /// <summary>
-    /// Notifica un cambio en el número de llaves del jugador.
+    /// Notifica un cambio en el nï¿½mero de llaves del jugador.
     /// </summary>
     public static void KeysChanged()
     {
@@ -27,7 +29,7 @@ public static class GameEvents
     }
 
     /// <summary>
-    /// Notifica un cambio en el número de diamantes del jugador.
+    /// Notifica un cambio en el nï¿½mero de diamantes del jugador.
     /// </summary>
     public static void DiamondsChanged()
     {
@@ -59,11 +61,19 @@ public static class GameEvents
     }
 
     /// <summary>
-    /// Notifica que se ha alcanzado la condición de victoria.
+    /// Notifica que se ha alcanzado la condiciï¿½n de victoria.
     /// </summary>
     public static void Victory()
     {
         OnVictory?.Invoke();
+    }
+
+    /// <summary>
+    /// Notifica un mensaje de estado de red para mostrarlo en pantalla.
+    /// </summary>
+    public static void NetworkStatusMessage(string message)
+    {
+        OnNetworkStatusMessage?.Invoke(message);
     }
 
     /// <summary>
@@ -76,6 +86,7 @@ public static class GameEvents
         OnDiamondsChanged = null;
         OnEnemyKilled = null;
         OnLocalPlayerRegistered = null;
+        OnNetworkStatusMessage = null;
     }
 
     /// <summary>
