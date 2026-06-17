@@ -28,9 +28,6 @@ public abstract class CharController : NetworkBehaviour
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Player;
 
-    /// <summary>
-    /// Inicializa componentes y carga estadísticas del personaje.
-    /// </summary>
     protected virtual void Awake()
     {
         uniqueEntity = GetComponent<UniqueEntity>();
@@ -41,24 +38,15 @@ public abstract class CharController : NetworkBehaviour
         LoadStats();
     }
 
-    /// <summary>
-    /// Inicializa la vida actual con la vida inicial configurada.
-    /// </summary>
     protected virtual void Start()
     {
         health = initialHealth;
     }
 
-    /// <summary>
-    /// Gestiona la lógica por frame de las clases derivadas.
-    /// </summary>
     protected virtual void Update()
     {
     }
 
-    /// <summary>
-    /// Gestiona knockback activo y movimiento físico del personaje.
-    /// </summary>
     protected virtual void FixedUpdate()
     {
         if (isKnockback)
@@ -73,11 +61,21 @@ public abstract class CharController : NetworkBehaviour
         }
 
         Move();
+        MoveServer();
+    }
+
+    protected virtual void Move()
+    {
+        rb.MovePosition(rb.position + movement.normalized * moveSpeed * Time.fixedDeltaTime);
     }
 
     /// <summary>
-    /// Marca el personaje como muerto y desactiva su interacción física.
+    /// Método virtual para movimiento. Las clases hijas lo sobrescriben.
     /// </summary>
+    protected virtual void MoveServer()
+    {
+    }
+
     public virtual void Die()
     {
         if (isDead) return;
@@ -94,9 +92,6 @@ public abstract class CharController : NetworkBehaviour
             characterCollider.enabled = false;
     }
 
-    /// <summary>
-    /// Aplica daño al personaje y activa el knockback asociado.
-    /// </summary>
     public virtual void TakeDamage(int amount, Vector2 knockbackDir)
     {
         if (isDead) return;
@@ -109,9 +104,6 @@ public abstract class CharController : NetworkBehaviour
         TakeKnockback(knockbackDir, knockbackForce);
     }
 
-    /// <summary>
-    /// Aplica una fuerza de knockback al personaje si procede.
-    /// </summary>
     public virtual void TakeKnockback(Vector2 knockbackDir, float customKnockbackForce = 0f)
     {
         if (isDead) return;
@@ -126,9 +118,6 @@ public abstract class CharController : NetworkBehaviour
         knockbackTimer = knockbackDuration;
     }
 
-    /// <summary>
-    /// Carga estadísticas base desde el ScriptableObject o aplica valores por defecto.
-    /// </summary>
     protected virtual void LoadStats()
     {
         if (stats != null)
@@ -150,24 +139,4 @@ public abstract class CharController : NetworkBehaviour
             knockbackDuration = 0.2f;
         }
     }
-
-    /// <summary>
-    /// Desplaza al personaje según su vector de movimiento y velocidad.
-    /// </summary>
-    /// 
-    protected virtual void Move()
-    {
-        rb.MovePosition(rb.position + movement.normalized * moveSpeed * Time.fixedDeltaTime);
-    }
 }
-
-
-////////////// TO DO LIST //////////////
-/// 
-/// eventos de animación para muerte de enemigos
-/// Usar eventos de animación para sincronizar destrucción y finalización de ataques.
-/// sonidos
-/// Reordenación de código (métodos y propiedades públicas al final, privados al principio)
-/// Documentación del proyecto (README, diagramas, comentarios en código, etc.)
-/// modificar la generación aleatoria del mapa para que encaje con el modo de semilla (seed) y sea reproducible
-

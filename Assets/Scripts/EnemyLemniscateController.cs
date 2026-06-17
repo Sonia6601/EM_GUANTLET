@@ -10,9 +10,6 @@ public class EnemyLemniscateController : EnemyController
     private Vector3 lastPosition;
     private float patrolTime = 0f;
 
-    /// <summary>
-    /// Inicializa la posición base de patrulla en lemniscata.
-    /// </summary>
     protected override void Start()
     {
         base.Start();
@@ -20,9 +17,6 @@ public class EnemyLemniscateController : EnemyController
         lastPosition = spawnPosition;
     }
 
-    /// <summary>
-    /// Carga las estadísticas específicas del movimiento en lemniscata.
-    /// </summary>
     protected override void LoadStats()
     {
         base.LoadStats();
@@ -42,76 +36,34 @@ public class EnemyLemniscateController : EnemyController
         }
     }
 
-    /// <summary>
-    /// Calcula y aplica el desplazamiento del enemigo sobre una trayectoria en lemniscata.
-    /// </summary>
-    /// 
-    protected override void Move()
+    protected override void MoveServer()
     {
-        if (isKnockback)
-        {
-            lastPosition = transform.position;
+        if (!IsServer || isKnockback)
             return;
-        }
 
         patrolTime += Time.fixedDeltaTime * moveSpeed;
 
         float x = Mathf.Sin(patrolTime) * patrolDistanceX;
         float y = Mathf.Sin(patrolTime) * Mathf.Cos(patrolTime) * patrolDistanceY;
 
-        Vector3 newPosition = spawnPosition + new Vector3(x, y, 0f);
-        rb.MovePosition(newPosition);
+        Vector3 nextPosition = spawnPosition + new Vector3(x, y, 0);
 
-        Vector2 movementDir = newPosition - lastPosition;
-        float angle = Mathf.Atan2(movementDir.y, movementDir.x) * Mathf.Rad2Deg - 90f;
-        transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        Vector2 direction = (nextPosition - lastPosition).normalized;
+        movement = direction;
 
-        lastPosition = newPosition;
-    }
+        rb.MovePosition(nextPosition);
+        lastPosition = nextPosition;
 
-    /// <summary>
-    /// Aplica daño y reajusta la fase de patrulla tras finalizar el knockback.
-    /// </summary>
-    public override void TakeDamage(int amount, Vector2 knockbackDir)
-    {
-        base.TakeDamage(amount, knockbackDir);
-        StartCoroutine(recalculatePatrolTimeAfterKnockback());
-    }
-
-    /// <summary>
-    /// Espera al fin del knockback y recalcula la fase de patrulla para evitar saltos.
-    /// </summary>
-    private System.Collections.IEnumerator recalculatePatrolTimeAfterKnockback()
-    {
-        while (isKnockback)
-            yield return null;
-
-        spawnPosition = transform.position;
-        patrolTime = getBestPatrolTime(transform.position, spawnPosition, patrolDistanceX, patrolDistanceY);
-    }
-
-    /// <summary>
-    /// Encuentra la fase de patrulla que mejor aproxima la posición actual del enemigo.
-    /// </summary>
-    private float getBestPatrolTime(Vector3 currentPosition, Vector3 origin, float distX, float distY)
-    {
-        float bestT = patrolTime;
-        float minDist = float.MaxValue;
-
-        for (float t = 0f; t < Mathf.PI * 2f; t += 0.01f)
+        if (direction.sqrMagnitude > 0.01f)
         {
-            float x = Mathf.Sin(t) * distX;
-            float y = Mathf.Sin(t) * Mathf.Cos(t) * distY;
-            Vector3 candidate = origin + new Vector3(x, y, 0f);
-
-            float dist = Vector3.Distance(currentPosition, candidate);
-            if (dist < minDist)
-            {
-                minDist = dist;
-                bestT = t;
-            }
+            float targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+            transform.rotation = Quaternion.Euler(0, 0, targetAngle);
         }
+    }
 
-        return bestT;
+    protected override void spawnDrops()
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+        base.spawnDrops();
     }
 }

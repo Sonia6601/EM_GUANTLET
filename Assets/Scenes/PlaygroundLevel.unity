@@ -3778,6 +3778,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1867944791}
+  - component: {fileID: 1867944793}
   - component: {fileID: 1867944792}
   m_Layer: 0
   m_Name: LevelGenerator
@@ -3813,6 +3814,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f76de6386faa47b43a9bb46078019792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelGenerator
+  ShowTopMostFoldoutHeaderGroup: 1
   tilemapFiller: {fileID: -5259628845251527081, guid: 3034d3bc02ee9fb43be45d6ada9db74f, type: 3}
   defaultMapConfig: {fileID: 11400000, guid: f2b8fa0700c57d34f9afa2d02b13cf7c, type: 2}
   treasurePrefab: {fileID: 6709209570887370143, guid: 111b683a758c08e4b8aa5bb1525f61de, type: 3}
@@ -3912,6 +3914,31 @@ MonoBehaviour:
     closedDoor: {fileID: 4853005277169393996, guid: e7f117b321e666b41bf03a437a79e608, type: 3}
     decorativeElement: {fileID: 6359469095843694024, guid: 7acafee1ec0459d44a10e38f86037b68, type: 3}
     decorativeElementPercentage: 0.05
+--- !u!114 &1867944793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1867944789}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 1518417808
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &1876720911
 GameObject:
   m_ObjectHideFlags: 0
