@@ -134,7 +134,7 @@ public class PlayerController : CharController
     /// </summary>
     protected override void Start()
     {
-        base.Start();
+        base.Start(); 
 
         gameObject.SetActive(false);
         Debug.LogWarning("[START PLAYER CONTROLLER] JUGADOR DESACTIVADO");
