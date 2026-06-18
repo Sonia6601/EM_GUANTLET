@@ -186,12 +186,12 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
                 break;
         }
 
-        ListosServerRpc();
+        ListosServerRpc(personajeId);
         
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void ListosServerRpc()
+    private void ListosServerRpc(int personajeId = 0)
     {
         jugadoresListos++;
         int totalJugadores = NetworkManager.Singleton.ConnectedClients.Count;

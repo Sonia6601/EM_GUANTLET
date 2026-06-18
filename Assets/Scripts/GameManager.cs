@@ -550,7 +550,14 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Incrementa el contador global de enemigos eliminados.
     /// </summary>
+    
     public void AddEnemyKill()
+    {
+        AddEnemyKillServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void AddEnemyKillServerRpc()
     {
         EnemiesKilled++;
         GameEvents.EnemyKilled(EnemiesKilled);
