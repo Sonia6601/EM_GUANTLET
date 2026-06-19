@@ -54,6 +54,7 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<int> clientes = new NetworkVariable<int>();
 
     private readonly HashSet<ulong> disconnectedClientsHandled = new HashSet<ulong>();
+    public int SelectedCharacterIndex { get; set; } = 0;
 
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
@@ -576,7 +577,11 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetDiamonds()
     {
-        return playerState?.Diamonds ?? 0;
+        if(LocalPlayerController != null)
+        {
+            return LocalPlayerController.Diamonds.Value;
+        }
+        return 0;
     }
 
     /// <summary>
@@ -723,16 +728,17 @@ public class GameManager : NetworkBehaviour
     // Una función rápida para obtener el índice del personaje seleccionado
     public int GetSelectedCharacterIndex()
     {
-        if (SelectedCharacterStats == null) return 0;
-        for (int i = 0; i < availableCharacters.Length; i++)
-        {
-            if (availableCharacters[i] == SelectedCharacterStats)
-            {
-                return i;
-            }
-        }
+        //if (SelectedCharacterStats == null) return 0;
+        //for (int i = 0; i < availableCharacters.Length; i++)
+        //{
+        //    if (availableCharacters[i] == SelectedCharacterStats)
+        //    {
+        //        return i;
+        //    }
+        //}
 
-        return 0;
+        //return 0;
+        return SelectedCharacterIndex;
     }
 
     // Una función para obtener las estadísticas usando el índice que viaja por la red
