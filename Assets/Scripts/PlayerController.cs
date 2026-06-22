@@ -28,6 +28,7 @@ public class PlayerController : CharController
     private NetworkVariable<int> initialHealth_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<int> health_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> Diamonds = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> Keys = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public string EntityId => GetComponent<UniqueEntity>()?.EntityId ?? "UNKNOWN";
 
     /// <summary>
@@ -140,6 +141,15 @@ public class PlayerController : CharController
         if (sr != null) sr.enabled = true;
     }
 
+    public void CambiarPersonajeDesdeCliente(int nuevoIdx)
+    {
+        if (IsOwner)
+        {
+            characterIndexSync.Value = nuevoIdx;
+            ActualizarAspectoVisual(nuevoIdx);
+        }
+    }
+
     private void OnHealthChanged(int previousValue, int newValue)
     {
         health = newValue;
@@ -151,6 +161,7 @@ public class PlayerController : CharController
         }
 
     }
+
 
 
     public override void OnNetworkDespawn()
@@ -488,7 +499,10 @@ public class PlayerController : CharController
 
     private void OnDiamondsChanged(int previo, int nuevo)
     {
-        GameEvents.DiamondsChanged();
+        if (IsOwner)
+        {
+            GameEvents.DiamondsChanged();
+        }
     }
     public void AddDiamondServer()
     {

@@ -186,6 +186,10 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
                 break;
         }
 
+        if (GameManager.Instance != null && GameManager.Instance.LocalPlayerController != null)
+        {
+            GameManager.Instance.LocalPlayerController.CambiarPersonajeDesdeCliente(personajeId);
+        }
         //GameManager.Instance.SelectedMapIdx = personajeId;
         //GameManager.Instance.SelectedCharacterIndex = personajeId;
         ListosServerRpc(personajeId);
