@@ -1,9 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
 
 public static class SceneNames
 {
@@ -54,6 +56,10 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<int> clientes = new NetworkVariable<int>();
 
     private readonly HashSet<ulong> disconnectedClientsHandled = new HashSet<ulong>();
+    public int SelectedCharacterIndex { get; set; } = 0;
+    public static int DiamantesEncontrados {  get; set; }
+    public static int LlavesSinUsar { get; set; }
+    public static int EnemigosEliminados { get; set; }
 
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
@@ -550,7 +556,14 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Incrementa el contador global de enemigos eliminados.
     /// </summary>
+    
     public void AddEnemyKill()
+    {
+        AddEnemyKillServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void AddEnemyKillServerRpc()
     {
         EnemiesKilled++;
         GameEvents.EnemyKilled(EnemiesKilled);
@@ -569,7 +582,11 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetDiamonds()
     {
-        return playerState?.Diamonds ?? 0;
+        if(LocalPlayerController != null)
+        {
+            return LocalPlayerController.Diamonds.Value;
+        }
+        return 0;
     }
 
     /// <summary>
@@ -606,9 +623,54 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryTriggerVictory(string playerEntityId, string chestEntityId)
     {
-        if (playerState == null) return false;
-        victoryAchieved();
+        if (!IsServer || playerState == null) return false; //El server solo puede cambiar de escena
+
+        CalcularEstadisticasFinales(); //Se calculan las estadisticas globales
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.VictoryScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            return true;
+        } else
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.VictoryScene);
+        }
+
+            victoryAchieved();
         return true;
+    }
+
+    private void CalcularEstadisticasFinales()
+    {
+        EnemigosEliminados = EnemiesKilled;
+
+        int totalDiamantes = 0;
+        int totalLlaves = 0;
+
+        if(NetworkManager.Singleton != null)
+        {
+            foreach (var client in NetworkManager.Singleton.ConnectedClients)
+            {
+                if(client.Value.PlayerObject != null)
+                {
+                    PlayerController player = client.Value.PlayerObject.GetComponent<PlayerController>();
+                    if (player != null)
+                    {
+                        totalDiamantes += player.Diamonds.Value;
+                        totalLlaves += player.Keys.Value;
+                    }
+                }
+            }
+        } else if (LocalPlayerController != null)
+        {
+            totalDiamantes = LocalPlayerController.Diamonds.Value;
+            totalLlaves = LocalPlayerController.Keys.Value;
+        }
+
+        DiamantesEncontrados = totalDiamantes;
+        LlavesSinUsar = totalLlaves;
+
+        UnityEngine.Debug.LogFormat("[STATS GLOBALES] Enemigos totales: {0} | Diamantes totales: {1} | Llaves sin usar: {2}", EnemigosEliminados, DiamantesEncontrados, LlavesSinUsar);
     }
 
     /// <summary>
@@ -716,16 +778,17 @@ public class GameManager : NetworkBehaviour
     // Una función rápida para obtener el índice del personaje seleccionado
     public int GetSelectedCharacterIndex()
     {
-        if (SelectedCharacterStats == null) return 0;
-        for (int i = 0; i < availableCharacters.Length; i++)
-        {
-            if (availableCharacters[i] == SelectedCharacterStats)
-            {
-                return i;
-            }
-        }
+        //if (SelectedCharacterStats == null) return 0;
+        //for (int i = 0; i < availableCharacters.Length; i++)
+        //{
+        //    if (availableCharacters[i] == SelectedCharacterStats)
+        //    {
+        //        return i;
+        //    }
+        //}
 
-        return 0;
+        //return 0;
+        return SelectedCharacterIndex;
     }
 
     // Una función para obtener las estadísticas usando el índice que viaja por la red

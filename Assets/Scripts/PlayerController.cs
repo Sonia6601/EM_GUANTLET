@@ -27,6 +27,9 @@ public class PlayerController : CharController
 );
     private NetworkVariable<int> initialHealth_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<int> health_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> Diamonds = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> Keys = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public string EntityId => GetComponent<UniqueEntity>()?.EntityId ?? "UNKNOWN";
 
     /// <summary>
     /// Inicializa controles de entrada y registra el jugador local en el gestor global.
@@ -54,6 +57,7 @@ public class PlayerController : CharController
 
         characterIndexSync.OnValueChanged += OnCharacterIndexChanged;
         health_online.OnValueChanged += OnHealthChanged;
+        Diamonds.OnValueChanged += OnDiamondsChanged;
         Debug.LogWarning("[ON NETWORK SPAWN] VOY A HACER LA CONEXION RED");
         //gameObject.SetActive(true);
         
@@ -65,7 +69,7 @@ public class PlayerController : CharController
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
-                characterIndexSync.Value = GameManager.Instance.GetSelectedCharacterIndex();
+                characterIndexSync.Value = GameManager.Instance.GetSelectedCharacterIndex(); ;
             }
             ActualizarAspectoVisual(characterIndexSync.Value);
 
@@ -122,6 +126,7 @@ public class PlayerController : CharController
         {
             health_online.Value = initialHealth;
             health = health_online.Value; // Sincroniza la variable local del CharController base
+
         }
 
         // Cambiamos el color/animaciones en el renderizador
@@ -134,6 +139,15 @@ public class PlayerController : CharController
         // Forzamos que el SpriteRenderer se encienda por si acaso el Awake lo dejó oculto
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = true;
+    }
+
+    public void CambiarPersonajeDesdeCliente(int nuevoIdx)
+    {
+        if (IsOwner)
+        {
+            characterIndexSync.Value = nuevoIdx;
+            ActualizarAspectoVisual(nuevoIdx);
+        }
     }
 
     private void OnHealthChanged(int previousValue, int newValue)
@@ -149,11 +163,13 @@ public class PlayerController : CharController
     }
 
 
+
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
         characterIndexSync.OnValueChanged -= OnCharacterIndexChanged;
         health_online.OnValueChanged -= OnHealthChanged;
+        Diamonds.OnValueChanged -= OnDiamondsChanged;
     }
 
 
@@ -479,6 +495,19 @@ public class PlayerController : CharController
         {
             Die();
         }
+    }
+
+    private void OnDiamondsChanged(int previo, int nuevo)
+    {
+        if (IsOwner)
+        {
+            GameEvents.DiamondsChanged();
+        }
+    }
+    public void AddDiamondServer()
+    {
+        if (!IsServer) return;
+        Diamonds.Value++;
     }
 
     /// <summary>

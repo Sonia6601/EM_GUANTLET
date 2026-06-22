@@ -87,22 +87,32 @@ public abstract class EnemyController : CharController
     [ServerRpc (RequireOwnership = false)]
     private void DespawnServerRpc()
     {
-        SpawnDropsClientRpc(transform.position);
-        NetworkObject netObj = GetComponent<NetworkObject>();
-        if (netObj != null) netObj.Despawn(true);
-    }
+        spawnDrops();
 
+        NetworkObject netObj = GetComponent<NetworkObject>();
+
+        if (netObj != null && netObj.IsSpawned)
+        {
+            netObj.Despawn(true);
+        }
+    }
+    /*
     [ClientRpc]
     private void SpawnDropsClientRpc(Vector3 posicionEnemigo)
     {
         spawnDrops();
     }
-
+    */
     /// <summary>
     /// Genera los drops del enemigo usando la configuración activa del mapa.
     /// </summary>
-    protected virtual void spawnDrops()
+        protected virtual void spawnDrops()
     {
+        if (!NetworkManager.Singleton.IsServer)
+        {
+            return;
+        }
+
         if (dropPrefabs == null || dropPrefabs.Length == 0)
         {
             Debug.LogWarning($"[{gameObject.name}] No tiene dropPrefabs configurados.");
@@ -128,25 +138,42 @@ public abstract class EnemyController : CharController
             GameObject dropPrefab = dropPrefabs[0];
 
             if (dropPrefabs.Length > 1 && i == 0 && Random.value < dropCfg.keyDropChance)
-                dropPrefab = dropPrefabs[1];
-
-            if (dropPrefab != null)
             {
-                float angle = startAngle + i * angleStep;
-                Vector3 dropPosition = transform.position +
-                    new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad), 0f) * 0.5f;
-
-                GameObject drop = Instantiate(dropPrefab, dropPosition, Quaternion.identity);
-                UniqueEntity uniqueEntity = drop.GetComponent<UniqueEntity>();
-                if (uniqueEntity != null) uniqueEntity.RegenerateIdOnSpawn();
-
-                if (NetworkManager.Singleton.IsServer)
-                {
-                    NetworkObject netObj = drop.GetComponent<NetworkObject>();
-                    if (netObj != null) netObj.Spawn(true);
-                }
-
+                dropPrefab = dropPrefabs[1];
             }
+
+            if (dropPrefab == null)
+            {
+                continue;
+            }
+
+            float angle = startAngle + i * angleStep;
+
+            Vector3 dropPosition = transform.position +
+                new Vector3(
+                    Mathf.Cos(angle * Mathf.Deg2Rad),
+                    Mathf.Sin(angle * Mathf.Deg2Rad),
+                    0f
+                ) * 0.5f;
+
+            GameObject drop = Instantiate(dropPrefab, dropPosition, Quaternion.identity);
+
+            UniqueEntity uniqueEntity = drop.GetComponent<UniqueEntity>();
+            if (uniqueEntity != null)
+            {
+                uniqueEntity.RegenerateIdOnSpawn();
+            }
+
+            NetworkObject netObj = drop.GetComponent<NetworkObject>();
+
+            if (netObj == null)
+            {
+                Debug.LogError($"[EnemyController] El drop {dropPrefab.name} no tiene NetworkObject.");
+                Destroy(drop);
+                continue;
+            }
+
+            netObj.Spawn(true);
         }
     }
 

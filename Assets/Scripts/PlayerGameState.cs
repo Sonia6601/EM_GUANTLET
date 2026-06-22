@@ -56,7 +56,7 @@ public class PlayerGameState
         if (keys < MAX_KEYS)
         {
             Keys++;
-            GameEvents.KeysChanged();
+            //GameEvents.KeysChanged();
         }
     }
 
@@ -68,7 +68,7 @@ public class PlayerGameState
         if (diamonds < MAX_DIAMONDS)
         {
             Diamonds++;
-            GameEvents.DiamondsChanged();
+            //GameEvents.DiamondsChanged();
         }
     }
 

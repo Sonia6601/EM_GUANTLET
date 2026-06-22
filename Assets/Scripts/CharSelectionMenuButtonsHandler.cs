@@ -165,15 +165,15 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     [ClientRpc]
     private void RecibirPersonajeClientRpc(int personajeId, ClientRpcParams rpcParams = default)
     {
-        
+        Debug.LogWarning($"[PERSONAJE] RecibirPersonajeClientRpc ejecutado. personajeId={personajeId}, soy clientId={NetworkManager.Singleton.LocalClientId}");
 
-        switch(personajeId){
+        switch (personajeId){
             case 0:
-                OnYellowButtonClicked();
+                OnGreenButtonClicked();
                 Debug.Log($"Me asignaron el personaje: {personajeId} -> color AMARILLO");
                 break;
             case 1:
-                OnGreenButtonClicked();
+                OnPurpleButtonClicked();
                 Debug.Log($"Me asignaron el personaje: {personajeId} -> color VERDE");
                 break;
             case 2:
@@ -181,26 +181,35 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
                 Debug.Log($"Me asignaron el personaje: {personajeId} -> color ROJO");
                 break;
             case 3:
-                OnPurpleButtonClicked();
+                OnYellowButtonClicked();
                 Debug.Log($"Me asignaron el personaje: {personajeId} -> color MORADO");
                 break;
         }
 
-        ListosServerRpc();
+        if (GameManager.Instance != null && GameManager.Instance.LocalPlayerController != null)
+        {
+            GameManager.Instance.LocalPlayerController.CambiarPersonajeDesdeCliente(personajeId);
+        }
+        //GameManager.Instance.SelectedMapIdx = personajeId;
+        //GameManager.Instance.SelectedCharacterIndex = personajeId;
+        ListosServerRpc(personajeId);
         
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void ListosServerRpc()
+    private void ListosServerRpc(int personajeId = 0)
     {
         jugadoresListos++;
         int totalJugadores = NetworkManager.Singleton.ConnectedClients.Count;
+        Debug.LogWarning($"[PERSONAJE] ListosServerRpc. jugadoresListos={jugadoresListos}/{totalJugadores}");
+
 
         Debug.Log($"[SERVER] Jugadores Listos: {jugadoresListos}/{totalJugadores}");
 
         if (jugadoresListos >= totalJugadores)
         {
             jugadoresListos = 0;
+            Debug.Log($"[PERSONAJE] Iniciando juego. Host SelectedCharacterIndex={GameManager.Instance.SelectedCharacterIndex}");
             GameManager.Instance.StartGame(GameManager.Instance.SelectedCharacterStats);
         }
         }
@@ -293,6 +302,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     {
         //selectCharacterAndStartGame(greenCharacterStats);
         GameManager.Instance.SelectedCharacterStats = greenCharacterStats;
+        GameManager.Instance.SelectedCharacterIndex = 0;
         greenCharacterStats.select = true;
 
     }
@@ -303,6 +313,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     public void OnPurpleButtonClicked()
     {
         GameManager.Instance.SelectedCharacterStats = purpleCharacterStats;
+        GameManager.Instance.SelectedCharacterIndex = 1;
         purpleCharacterStats.select = true;
 
     }
@@ -313,6 +324,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     public void OnRedButtonClicked()
     {
         GameManager.Instance.SelectedCharacterStats = redCharacterStats;
+        GameManager.Instance.SelectedCharacterIndex = 2;
         redCharacterStats.select = true;
 
     }
@@ -323,6 +335,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     public void OnYellowButtonClicked()
     {
         GameManager.Instance.SelectedCharacterStats = yellowCharacterStats;
+        GameManager.Instance.SelectedCharacterIndex = 3;
         yellowCharacterStats.select = true;
 
     }

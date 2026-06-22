@@ -1,12 +1,13 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 [RequireComponent(typeof(UniqueEntity))]
-public class DiamondCollection : MonoBehaviour
+public class DiamondCollection : NetworkBehaviour
 {
     [SerializeField] private string playerTag = "Player";
 
     private UniqueEntity uniqueEntity;
-
+    private bool recogido = false;
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Pickup_Diamond;
 
@@ -28,16 +29,52 @@ public class DiamondCollection : MonoBehaviour
     /// </summary>
     private void OnCollisionStay2D(Collision2D collision)
     {
+        if (recogido) return;
         if (!collision.gameObject.CompareTag(playerTag)) return;
 
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
-        if (player == null) return;
+        if (player == null || !player.IsOwner) return;
         if (GameManager.Instance == null) return;
 
-        if (GameManager.Instance.TryAddDiamond(player.EntityId, EntityId))
-        {
-            Debug.Log($"[{EntityType}:{EntityId}] collected by [Player:{player.EntityId}]");
-            Destroy(gameObject);
-        }
+        //if (GameManager.Instance.TryAddDiamond(player.EntityId, EntityId))
+        //{
+        //    Debug.Log($"[{EntityType}:{EntityId}] collected by [Player:{player.EntityId}]");
+        //    Destroy(gameObject);
+        //}
+
+        RecogerDiamantesServerRpc(player.OwnerClientId);
     }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RecogerDiamantesServerRpc(ulong playerId)
+    {
+        //if (recogido) return; //Si ha sido recogido, no hagas nada
+        //recogido = true; //se marca como recogido
+
+        //if (NetworkManager.Singleton.ConnectedClients.TryGetValue(playerId, out var cliente)) //si el jugador existe
+        //{
+        //    PlayerController player = cliente.PlayerObject?.GetComponent<PlayerController>();
+        //    if (player == null) return;
+        //    GameManager.Instance.TryAddDiamond(player.EntityId, EntityId); //lo intenta recoger llamando a TryAddDiamon
+        //}
+
+        //NotificarClienteClientRpc(playerId); //Notifica
+        //NetworkObject.Despawn(true);
+
+        if (recogido) return;
+        recogido = true;
+
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(playerId, out var client))
+        {
+            PlayerController player = client.PlayerObject?.GetComponent<PlayerController>();
+            if (player != null)
+            {
+                player.AddDiamondServer();
+            }
+        }
+
+        NetworkObject.Despawn(true);
+    }
+
+    
 }
