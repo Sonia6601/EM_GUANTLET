@@ -1,8 +1,9 @@
 using TMPro;
 using UnityEngine;
 using Unity.Netcode;
+using System;
 
-public class VictoriyScreenDisplay : MonoBehaviour
+public class VictoryScreenDisplay : MonoBehaviour
 {
     [SerializeField] private TMP_Text enemigos;
     [SerializeField] private TMP_Text llaves;
@@ -10,19 +11,26 @@ public class VictoriyScreenDisplay : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        UpdateDisplay();
+        GameManager.OnStatsSynced += UpdateDisplay;
+
+    }
+
+    private void UpdateDisplay()
+    {
         if (enemigos != null)
         {
-            enemigos.text = "Enemigos eliminados: " + GameManager.EnemigosEliminados;
+            enemigos.text = " " + GameManager.EnemigosEliminados;
+        }
+
+        if (diamantes != null)
+        {
+            diamantes.text = " " + GameManager.DiamantesEncontrados;
         }
 
         if (llaves != null)
         {
-            diamantes.text = "Joyas encontradas: " + GameManager.DiamantesEncontrados;
-        }
-
-        if (llaves != null)
-        {
-            llaves.text = "Llaves sin usar: " + GameManager.LlavesSinUsar;
+            llaves.text = " " + GameManager.LlavesSinUsar;
         }
     }
 

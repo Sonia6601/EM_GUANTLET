@@ -16,6 +16,17 @@ public class GameOverCanvasHandler : MonoBehaviour
         displayGameStats();
     }
 
+    private void OnEnable()
+    {
+        GameManager.OnStatsSynced += displayGameStats;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.OnStatsSynced -= displayGameStats;
+    }
+
+
     /// <summary>
     /// Carga el menú principal al pulsar el botón de volver.
     /// </summary>
@@ -29,15 +40,13 @@ public class GameOverCanvasHandler : MonoBehaviour
     /// </summary>
     private void displayGameStats()
     {
-        if (GameManager.Instance == null) return;
-
         if (jewelsValueText != null)
-            jewelsValueText.text = GameManager.Instance.GetDiamonds().ToString();
+            jewelsValueText.text = GameManager.DiamantesEncontrados.ToString();
 
         if (keysValueText != null)
-            keysValueText.text = GameManager.Instance.GetKeys().ToString();
+            keysValueText.text = GameManager.LlavesSinUsar.ToString();
 
         if (enemiesKilledText != null)
-            enemiesKilledText.text = GameManager.Instance.EnemiesKilled.ToString();
+            enemiesKilledText.text = GameManager.EnemigosEliminados.ToString();
     }
 }

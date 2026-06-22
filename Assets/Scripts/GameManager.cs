@@ -50,8 +50,10 @@ public class GameManager : NetworkBehaviour
     
 
     [SerializeField] private float delayBeforeScene = 0.5f;
+    public static event System.Action OnStatsSynced;
 
     private PlayerGameState playerState;
+    private int jugadoresVivos = 0;
 
     public NetworkVariable<int> clientes = new NetworkVariable<int>();
 
@@ -60,6 +62,7 @@ public class GameManager : NetworkBehaviour
     public static int DiamantesEncontrados {  get; set; }
     public static int LlavesSinUsar { get; set; }
     public static int EnemigosEliminados { get; set; }
+    public static bool LocalPlayerHasDied { get; set; } = false;
 
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
@@ -106,6 +109,31 @@ public class GameManager : NetworkBehaviour
         UnityEngine.Debug.Log("[GameManager] Start: Callbacks suscritos correctamente.");
 
     }
+
+
+
+
+    // Llama a esto cuando arranca la partida (en ResetGameData o al spawnear)
+    public void InicializarJugadoresVivos()
+    {
+        if (!IsServer) return;
+        jugadoresVivos = NetworkManager.Singleton.ConnectedClientsList.Count;
+        UnityEngine.Debug.Log($"[GameManager] Jugadores vivos al inicio: {jugadoresVivos}");
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void NotificarMuerteServerRpc()
+    {
+        jugadoresVivos--;
+        UnityEngine.Debug.Log($"[GameManager] Un jugador murió. Quedan vivos: {jugadoresVivos}");
+
+        if (jugadoresVivos <= 0)
+        {
+            // Todos muertos → ahora sí, partida terminada
+            SincronizarEstadisticasFinDePartida();
+        }
+    }
+
 
     private void onSceneLoadCompleted(
         string sceneName,
@@ -165,6 +193,10 @@ public class GameManager : NetworkBehaviour
                 
 
             }
+        }
+        else if (sceneName == SceneNames.PlaygroundLevel)
+        {
+            InicializarJugadoresVivos();
         }
 
 
@@ -574,7 +606,11 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetKeys()
     {
-        return playerState?.Keys ?? 0;
+        if (LocalPlayerController != null)
+        {
+            return LocalPlayerController.Keys.Value;
+        }
+        return 0;
     }
 
     /// <summary>
@@ -594,28 +630,34 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryAddKey(string playerEntityId, string keyEntityId)
     {
-        if (playerState == null) return false;
-        playerState.AddKey();
+        if (!IsServer) return false;
+
+        var player = FindPlayerByEntityId(playerEntityId);
+        if (player == null) return false;
+
+        player.AddKeyServer();
         return true;
     }
 
-    /// <summary>
-    /// Intenta añadir un diamante al inventario del jugador actual.
-    /// </summary>
     public bool TryAddDiamond(string playerEntityId, string diamondEntityId)
     {
-        if (playerState == null) return false;
-        playerState.AddDiamond();
+        if (!IsServer) return false;
+
+        var player = FindPlayerByEntityId(playerEntityId);
+        if (player == null) return false;
+
+        player.AddDiamondServer();
         return true;
     }
 
-    /// <summary>
-    /// Intenta abrir una puerta consumiendo una llave del jugador actual.
-    /// </summary>
     public bool TryOpenDoor(string playerEntityId, string doorEntityId)
     {
-        if (playerState == null) return false;
-        return playerState.UseKey();
+        if (!IsServer) return false;
+
+        var player = FindPlayerByEntityId(playerEntityId);
+        if (player == null) return false;
+
+        return player.UseKeyServer();
     }
 
     /// <summary>
@@ -623,21 +665,56 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryTriggerVictory(string playerEntityId, string chestEntityId)
     {
-        if (!IsServer || playerState == null) return false; //El server solo puede cambiar de escena
+        if (!IsServer || playerState == null) return false; // El server solo puede cambiar de escena
 
-        CalcularEstadisticasFinales(); //Se calculan las estadisticas globales
+        CalcularEstadisticasFinales(); // Se calculan las estadisticas globales
+
+        // 👑 NUEVO: Sincronizamos las estadísticas estáticas con todos los clientes
+        SincronizarEstadisticasClientRpc(DiamantesEncontrados, LlavesSinUsar, EnemigosEliminados);
 
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
         {
             NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.VictoryScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
             return true;
-        } else
+        }
+        else
         {
             UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.VictoryScene);
         }
 
-            victoryAchieved();
+        victoryAchieved();
         return true;
+    }
+
+    // RPC para que los clientes actualicen sus variables locales antes del cambio de escena
+    [ClientRpc]
+    private void SincronizarEstadisticasClientRpc(int diamantes, int llaves, int enemigos)
+    {
+        DiamantesEncontrados = diamantes;
+        LlavesSinUsar = llaves;
+        EnemigosEliminados = enemigos;
+
+        OnStatsSynced?.Invoke();
+
+        // Todos los que hayan muerto activan su panel ahora, con datos finales
+        if (GameManager.LocalPlayerHasDied)
+        {
+            GameEvents.PlayerDied();
+        }
+    }
+
+
+    public void SincronizarEstadisticasFinDePartida()
+    {
+        if (!IsServer) return;
+        CalcularEstadisticasFinales();
+        SincronizarEstadisticasClientRpc(DiamantesEncontrados, LlavesSinUsar, EnemigosEliminados);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SolicitarSincronizacionFinDePartidaServerRpc()
+    {
+        SincronizarEstadisticasFinDePartida();
     }
 
     private void CalcularEstadisticasFinales()
@@ -647,30 +724,24 @@ public class GameManager : NetworkBehaviour
         int totalDiamantes = 0;
         int totalLlaves = 0;
 
-        if(NetworkManager.Singleton != null)
+        // Solo los jugadores conectados de verdad, no prefabs sueltos ni duplicados
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
-            foreach (var client in NetworkManager.Singleton.ConnectedClients)
-            {
-                if(client.Value.PlayerObject != null)
-                {
-                    PlayerController player = client.Value.PlayerObject.GetComponent<PlayerController>();
-                    if (player != null)
-                    {
-                        totalDiamantes += player.Diamonds.Value;
-                        totalLlaves += player.Keys.Value;
-                    }
-                }
-            }
-        } else if (LocalPlayerController != null)
-        {
-            totalDiamantes = LocalPlayerController.Diamonds.Value;
-            totalLlaves = LocalPlayerController.Keys.Value;
+            var playerObj = client.PlayerObject;
+            if (playerObj == null) continue;
+
+            var pc = playerObj.GetComponent<PlayerController>();
+            if (pc == null) continue;
+
+            UnityEngine.Debug.Log($"[CalcularStats] Cliente {client.ClientId} | Diamonds={pc.Diamonds.Value} | Keys={pc.Keys.Value}");
+            totalDiamantes += pc.Diamonds.Value;
+            totalLlaves += pc.Keys.Value;
         }
 
         DiamantesEncontrados = totalDiamantes;
         LlavesSinUsar = totalLlaves;
 
-        UnityEngine.Debug.LogFormat("[STATS GLOBALES] Enemigos totales: {0} | Diamantes totales: {1} | Llaves sin usar: {2}", EnemigosEliminados, DiamantesEncontrados, LlavesSinUsar);
+        UnityEngine.Debug.LogFormat("[STATS GLOBALES] Enemigos: {0} | Diamantes: {1} | Llaves: {2}", EnemigosEliminados, DiamantesEncontrados, LlavesSinUsar);
     }
 
     /// <summary>
@@ -772,6 +843,26 @@ public class GameManager : NetworkBehaviour
         UnityEngine.Debug.Log($"[GameManager] Jugador muerto. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
     }*/
 
+    private PlayerController FindPlayerByEntityId(string playerEntityId)
+    {
+        if (NetworkManager.Singleton == null) return null;
+
+        foreach (var client in NetworkManager.Singleton.ConnectedClients)
+        {
+            var playerObj = client.Value.PlayerObject;
+            if (playerObj == null) continue;
+
+            var entity = playerObj.GetComponent<UniqueEntity>();
+            if (entity != null && entity.EntityId == playerEntityId)
+            {
+                return playerObj.GetComponent<PlayerController>();
+            }
+        }
+        return null;
+    }
+
+
+
     [Header("Personajes Disponibles")]
     [SerializeField] private PlayerStats[] availableCharacters; // <-- Añade esto
 
@@ -790,6 +881,7 @@ public class GameManager : NetworkBehaviour
         //return 0;
         return SelectedCharacterIndex;
     }
+
 
     // Una función para obtener las estadísticas usando el índice que viaja por la red
     public PlayerStats GetCharacterStatsByIndex(int index)

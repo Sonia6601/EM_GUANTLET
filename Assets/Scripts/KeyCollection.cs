@@ -33,7 +33,7 @@ public class KeyCollection : NetworkBehaviour
         if (!collision.gameObject.CompareTag(playerTag)) return;
 
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
-        if (player == null | !player.IsOwner) return;
+        if (player == null || !player.IsOwner) return;
         if (GameManager.Instance == null) return;
 
         //if (GameManager.Instance.TryAddKey(player.EntityId, EntityId))
@@ -51,21 +51,17 @@ public class KeyCollection : NetworkBehaviour
         if (recogido) return;
         recogido = true;
 
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(playerId, out var cliente))
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(playerId, out var client))
         {
-            PlayerController player = cliente.PlayerObject?.GetComponent<PlayerController>();   
-            if (player == null) return;
-            GameManager.Instance.TryAddKey(player.EntityId, EntityId);
+            PlayerController player = client.PlayerObject?.GetComponent<PlayerController>();   
+            if (player != null) 
+            {
+                player.AddKeyServer();
+            }
+
         }
 
-        NotificarClienteClientRpc(playerId);
         NetworkObject.Despawn(true);
     }
 
-    [ClientRpc]
-    private void NotificarClienteClientRpc(ulong playerId)
-    {
-        if (NetworkManager.Singleton.LocalClientId != playerId) return;
-        GameEvents.KeysChanged();
-    }
 }

@@ -31,7 +31,7 @@ public class PlayerGameState
         set
         {
             keys = UnityEngine.Mathf.Clamp(value, 0, MAX_KEYS);
-            GameEvents.KeysChanged();
+            //GameEvents.KeysChanged(keys);
         }
     }
 
@@ -44,7 +44,7 @@ public class PlayerGameState
         set
         {
             diamonds = UnityEngine.Mathf.Clamp(value, 0, MAX_DIAMONDS);
-            GameEvents.DiamondsChanged();
+            //GameEvents.DiamondsChanged(diamonds);
         }
     }
 
@@ -80,7 +80,7 @@ public class PlayerGameState
         if (keys > 0)
         {
             Keys--;
-            GameEvents.KeysChanged();
+            //GameEvents.KeysChanged(keys);
             return true;
         }
 
@@ -94,7 +94,7 @@ public class PlayerGameState
     {
         keys = 0;
         diamonds = 0;
-        GameEvents.KeysChanged();
-        GameEvents.DiamondsChanged();
+        //GameEvents.KeysChanged(keys);
+        //GameEvents.DiamondsChanged(diamonds);
     }
 }

@@ -3,13 +3,13 @@ using System;
 public static class GameEvents
 {
     public static event Action<int> OnHealthChanged;
-    public static event Action OnKeysChanged;
-    public static event Action OnDiamondsChanged;
+    public static event Action<int> OnKeysChanged;
+    public static event Action<int> OnDiamondsChanged;
     public static event Action<int> OnEnemyKilled;
     public static event Action<PlayerController> OnLocalPlayerRegistered;
     public static event Action OnPlayerDied;
     public static event Action OnVictory;
-
+    public static event Action OnLocalPlayerDied;
     public static event Action<string> OnNetworkStatusMessage;
 
     /// <summary>
@@ -23,17 +23,17 @@ public static class GameEvents
     /// <summary>
     /// Notifica un cambio en el n�mero de llaves del jugador.
     /// </summary>
-    public static void KeysChanged()
+    public static void KeysChanged(int newKeys)
     {
-        OnKeysChanged?.Invoke();
+        OnKeysChanged?.Invoke(newKeys);
     }
 
     /// <summary>
     /// Notifica un cambio en el n�mero de diamantes del jugador.
     /// </summary>
-    public static void DiamondsChanged()
+    public static void DiamondsChanged(int newDiamonds)
     {
-        OnDiamondsChanged?.Invoke();
+        OnDiamondsChanged?.Invoke(newDiamonds);
     }
 
     /// <summary>
@@ -67,6 +67,13 @@ public static class GameEvents
     {
         OnVictory?.Invoke();
     }
+
+
+    public static void LocalPlayerDied()
+    {
+        OnLocalPlayerDied?.Invoke();
+    }
+
 
     /// <summary>
     /// Notifica un mensaje de estado de red para mostrarlo en pantalla.

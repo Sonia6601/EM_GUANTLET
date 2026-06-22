@@ -58,6 +58,7 @@ public class PlayerController : CharController
         characterIndexSync.OnValueChanged += OnCharacterIndexChanged;
         health_online.OnValueChanged += OnHealthChanged;
         Diamonds.OnValueChanged += OnDiamondsChanged;
+        Keys.OnValueChanged += OnKeysChanged;
         Debug.LogWarning("[ON NETWORK SPAWN] VOY A HACER LA CONEXION RED");
         //gameObject.SetActive(true);
         
@@ -71,6 +72,7 @@ public class PlayerController : CharController
                 GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
                 characterIndexSync.Value = GameManager.Instance.GetSelectedCharacterIndex(); ;
             }
+
             ActualizarAspectoVisual(characterIndexSync.Value);
 
         }
@@ -88,9 +90,13 @@ public class PlayerController : CharController
         {
             //if (sr != null) sr.enabled = true;
             // Dispara eventos iniciales para actualizar el HUD
-            GameEvents.HealthChanged(health_online.Value);
-            GameEvents.KeysChanged();
-            GameEvents.DiamondsChanged();
+            // Dispara eventos iniciales para actualizar el HUD
+            if (IsOwner)
+            {
+                GameEvents.HealthChanged(health_online.Value);
+                GameEvents.KeysChanged(Keys.Value);
+                GameEvents.DiamondsChanged(Diamonds.Value);
+            }
 
             IsAttacking = false;
         }
@@ -162,7 +168,13 @@ public class PlayerController : CharController
 
     }
 
-
+    private void OnKeysChanged(int previo, int nuevo)
+    {
+        if (IsOwner)
+        {
+            GameEvents.KeysChanged(nuevo);
+        }
+    }
 
     public override void OnNetworkDespawn()
     {
@@ -170,6 +182,7 @@ public class PlayerController : CharController
         characterIndexSync.OnValueChanged -= OnCharacterIndexChanged;
         health_online.OnValueChanged -= OnHealthChanged;
         Diamonds.OnValueChanged -= OnDiamondsChanged;
+        Keys.OnValueChanged -= OnKeysChanged;
     }
 
 
@@ -399,14 +412,16 @@ public class PlayerController : CharController
     /// </summary>
     public override void Die()
     {
-
         base.Die();
 
-        // Dispara evento de muerte
-        GameEvents.PlayerDied();
+        if (IsOwner)
+        {
+            GameManager.LocalPlayerHasDied = true;
+            GameEvents.LocalPlayerDied();   // ← pantallita "has muerto" YA
+        }
 
-        //GameManager.Instance?.TriggerGameOver();
-
+        if (GameManager.Instance != null)
+            GameManager.Instance.NotificarMuerteServerRpc();
     }
 
     /// <summary>
@@ -501,7 +516,7 @@ public class PlayerController : CharController
     {
         if (IsOwner)
         {
-            GameEvents.DiamondsChanged();
+            GameEvents.DiamondsChanged(nuevo);
         }
     }
     public void AddDiamondServer()
@@ -509,6 +524,22 @@ public class PlayerController : CharController
         if (!IsServer) return;
         Diamonds.Value++;
     }
+
+    public void AddKeyServer()
+    {
+        if (!IsServer) return;
+        Keys.Value++;
+    }
+
+    public bool UseKeyServer()
+    {
+        if (!IsServer) return false;
+        if (Keys.Value <= 0) return false;
+        Keys.Value--;
+        return true;
+    }
+
+
 
     /// <summary>
     /// Inicia la animación de ataque y programa su final según el cooldown.
@@ -540,4 +571,6 @@ public class PlayerController : CharController
     {
         IsAttacking = false;
     }
+
+
 }

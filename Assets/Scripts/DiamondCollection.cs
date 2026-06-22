@@ -46,20 +46,9 @@ public class DiamondCollection : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void RecogerDiamantesServerRpc(ulong playerId)
+    private void RecogerDiamantesServerRpc(ulong playerId) 
     {
-        //if (recogido) return; //Si ha sido recogido, no hagas nada
-        //recogido = true; //se marca como recogido
 
-        //if (NetworkManager.Singleton.ConnectedClients.TryGetValue(playerId, out var cliente)) //si el jugador existe
-        //{
-        //    PlayerController player = cliente.PlayerObject?.GetComponent<PlayerController>();
-        //    if (player == null) return;
-        //    GameManager.Instance.TryAddDiamond(player.EntityId, EntityId); //lo intenta recoger llamando a TryAddDiamon
-        //}
-
-        //NotificarClienteClientRpc(playerId); //Notifica
-        //NetworkObject.Despawn(true);
 
         if (recogido) return;
         recogido = true;
