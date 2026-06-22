@@ -417,7 +417,7 @@ public class PlayerController : CharController
         if (IsOwner)
         {
             GameManager.LocalPlayerHasDied = true;
-            GameEvents.LocalPlayerDied();   // ← pantallita "has muerto" YA
+            GameEvents.LocalPlayerDied();   // ← pantalla "has muerto" YA
         }
 
         if (GameManager.Instance != null)

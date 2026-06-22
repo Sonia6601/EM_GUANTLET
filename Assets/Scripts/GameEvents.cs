@@ -52,6 +52,12 @@ public static class GameEvents
         OnLocalPlayerRegistered?.Invoke(player);
     }
 
+    public static void LocalPlayerDied()
+    {
+        OnLocalPlayerDied?.Invoke();
+    }
+
+
     /// <summary>
     /// Notifica que el jugador ha muerto.
     /// </summary>
@@ -68,11 +74,6 @@ public static class GameEvents
         OnVictory?.Invoke();
     }
 
-
-    public static void LocalPlayerDied()
-    {
-        OnLocalPlayerDied?.Invoke();
-    }
 
 
     /// <summary>
@@ -104,5 +105,6 @@ public static class GameEvents
         ClearSceneEvents();
         OnPlayerDied = null;
         OnVictory = null;
+        OnLocalPlayerDied = null;
     }
 }
