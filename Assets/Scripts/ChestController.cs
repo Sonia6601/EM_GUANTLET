@@ -1,16 +1,16 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[RequireComponent(typeof(UniqueEntity))] // ✅ Requiere UniqueEntity
+[RequireComponent(typeof(UniqueEntity))]
 public class ChestController : MonoBehaviour
 {
 
     private bool collected = false;
     
-    // ✅ Nueva variable para UniqueEntity
+
     private UniqueEntity uniqueEntity;
     
-    // ✅ Propiedades de acceso rápido
+
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Interactive_Chest;
     
@@ -19,7 +19,7 @@ public class ChestController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        // ✅ Obtener UniqueEntity
+
         uniqueEntity = GetComponent<UniqueEntity>();
         
         // Validación del tipo correcto
@@ -40,7 +40,6 @@ public class ChestController : MonoBehaviour
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
         if (player == null) return;
 
-        // ✅ Log con IDs para debugging multiplayer
         Debug.Log($"[{EntityType}:{EntityId}] opened by [Player:{player.EntityId}]");
 
         if (GameManager.Instance != null && GameManager.Instance.TryTriggerVictory(player.EntityId, EntityId))

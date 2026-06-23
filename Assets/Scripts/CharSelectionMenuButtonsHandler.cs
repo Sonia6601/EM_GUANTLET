@@ -32,7 +32,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
         UpdateConnectedClientsUI();
 
-        // Suscribirse al NetworkVariable 'clientes' para recibir actualizaciones desde el servidor
+        // Suscribirse al NetworkVariable para recibir actualizaciones desde el servidor
         if (GameManager.Instance != null && GameManager.Instance.clientes != null)
         {
             GameManager.Instance.clientes.OnValueChanged += OnClientesChanged;
@@ -43,16 +43,6 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
             CreateButton();
         }
 
-        // Debug: comprobar referencias
-        if (connectedPlayersText == null)
-        {
-            Debug.LogWarning("[CharSelection] connectedPlayersText no asignado en el Inspector. Intentando localizar automáticamente...");
-            TryAutoFindConnectedPlayersText();
-        }
-        else
-        {
-            Debug.Log($"[CharSelection] connectedPlayersText asignado: {connectedPlayersText.name}");
-        }
     }
 
     private void Update()
@@ -190,8 +180,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         {
             GameManager.Instance.LocalPlayerController.CambiarPersonajeDesdeCliente(personajeId);
         }
-        //GameManager.Instance.SelectedMapIdx = personajeId;
-        //GameManager.Instance.SelectedCharacterIndex = personajeId;
+
         ListosServerRpc(personajeId);
         
     }
@@ -280,27 +269,11 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
         AsignarPersonaje();
 
-        // Ahora usamos la instancia local directa, sin pasar por NetworkManager
-        //var localPlayer = PlayerState.LocalInstance;
-
-        //if (localPlayer == null)
-        //{
-        //    Debug.LogError("[CharSelection] PlayerState.LocalInstance es null. " +
-        //                   "El prefab del jugador no tiene PlayerState, o aún no se spawneó.");
-        //    return;
-        //}
-
-        //Debug.Log($"[CharSelection] Marcando ready. Estado actual: {localPlayer.isReady.Value}");
-        //localPlayer.SetReadyServerRpc(!localPlayer.isReady.Value);
-
-
-
     }
 
 
     public void OnGreenButtonClicked()
     {
-        //selectCharacterAndStartGame(greenCharacterStats);
         GameManager.Instance.SelectedCharacterStats = greenCharacterStats;
         GameManager.Instance.SelectedCharacterIndex = 0;
         greenCharacterStats.select = true;
@@ -339,22 +312,5 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         yellowCharacterStats.select = true;
 
     }
-
-    /// <summary>
-    /// Valida la selección del personaje y delega el inicio de partida en GameManager.
-    /// 
-    /// 
-    /// Para futuras iteraciones, en esta función se puede hacer que se compruebe si todos los persoanjes tienen uno asignado, de mometno no nos hace falta, ya que la asignación de persoanjes se va a hacer de forma directa
-    /// </summary>
-    //private void selectCharacterAndStartGame(PlayerStats characterStats)
-    //{
-    //    //if (characterStats == null)
-    //    //{
-    //    //    Debug.LogError("[CharSelection] No se ha asignado PlayerStats para este personaje");
-    //    //    return;
-    //    //}
-
-    //    GameManager.Instance?.StartGame(characterStats);
-    //}
 
 }

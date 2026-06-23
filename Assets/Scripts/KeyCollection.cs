@@ -36,11 +36,6 @@ public class KeyCollection : NetworkBehaviour
         if (player == null || !player.IsOwner) return;
         if (GameManager.Instance == null) return;
 
-        //if (GameManager.Instance.TryAddKey(player.EntityId, EntityId))
-        //{
-        //    Debug.Log($"[{EntityType}:{EntityId}] collected by [Player:{player.EntityId}]");
-        //    Destroy(gameObject);
-        //}
 
         RecogerLlaveServerRpc(player.OwnerClientId);
     }

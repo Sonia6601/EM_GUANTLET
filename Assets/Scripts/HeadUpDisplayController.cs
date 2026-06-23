@@ -109,7 +109,6 @@ public class HeadUpDisplayController : MonoBehaviour
     {
         if (activeBlock == null) return;
 
-        //keys = GameManager.Instance != null ? GameManager.Instance.GetKeys() : 0;
         int units = keys % 10;
         Sprite unitsSprite = getSpriteForDigit(units);
 
@@ -125,7 +124,6 @@ public class HeadUpDisplayController : MonoBehaviour
     {
         if (activeBlock == null) return;
 
-        //diamonds = GameManager.Instance != null ? GameManager.Instance.GetDiamonds() : 0;
         int hundreds = diamonds / 100;
         int tens = (diamonds % 100) / 10;
         int units = diamonds % 10;
@@ -195,34 +193,6 @@ public class HeadUpDisplayController : MonoBehaviour
         }
     }
 
-    private void refreshKeys(int totalKeys)
-    {
-        if (activeBlock == null) return;
-
-        int units = totalKeys % 10;
-
-        if (activeBlock.imageKeyUnits != null)
-            activeBlock.imageKeyUnits.sprite = getSpriteForDigit(units);
-    }
-
-    private void refreshDiamonds(int totalDiamonds)
-    {
-        if (activeBlock == null) return;
-
-        // Ya no necesitamos GameManager.Instance.GetDiamonds();
-        int hundreds = (totalDiamonds / 100) % 10;
-        int tens = (totalDiamonds / 10) % 10;
-        int units = totalDiamonds % 10;
-
-        if (activeBlock.imageDiamondsHundreds != null)
-            activeBlock.imageDiamondsHundreds.sprite = getSpriteForDigit(hundreds);
-
-        if (activeBlock.imageDiamondTens != null)
-            activeBlock.imageDiamondTens.sprite = getSpriteForDigit(tens);
-
-        if (activeBlock.imageDiamondUnits != null)
-            activeBlock.imageDiamondUnits.sprite = getSpriteForDigit(units);
-    }
 
 
     /// <summary>

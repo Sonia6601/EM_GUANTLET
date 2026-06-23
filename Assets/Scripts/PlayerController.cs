@@ -8,11 +8,8 @@ public class PlayerController : CharController
     protected int damageToEnemy;
     protected float attackCooldown;
 
-    private float horizontalInput;         // Entrada horizontal (A/D o flechas)
-    private float verticalInput;           // Entrada vertical (W/S o flechas)
-
-    //public float moveSpeed = 5f;           // Velocidad de movimiento
-
+    private float horizontalInput; // entrada horizontal (A/D o flechas)
+    private float verticalInput;   // entrada vertical (W/S o flechas)
 
     private PlayerControls controls;
 
@@ -20,79 +17,68 @@ public class PlayerController : CharController
     public int DamageToEnemy => damageToEnemy;
     public NetworkVariable<Vector2> Position = new NetworkVariable<Vector2>();
     public NetworkVariable<float> moveSpeedSync = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
+    // Índice del personaje elegido, sincronizado a todos pero solo lo escribe el dueño
     private readonly NetworkVariable<int> characterIndexSync = new NetworkVariable<int>(
-    0,
-    NetworkVariableReadPermission.Everyone,
-    NetworkVariableWritePermission.Owner
-);
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+
     private NetworkVariable<int> initialHealth_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<int> health_online = new NetworkVariable<int>(99, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> Diamonds = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> Keys = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public string EntityId => GetComponent<UniqueEntity>()?.EntityId ?? "UNKNOWN";
 
-    /// <summary>
-    /// Inicializa controles de entrada y registra el jugador local en el gestor global.
-    /// </summary>
+    // Configura los controles de entrada y deja el sprite oculto hasta que se sincronice el personaje
     protected override void Awake()
     {
         base.Awake();
         controls = new PlayerControls();
 
-
-        // ✅ Ocultar hasta que LevelGenerator lo reposicione
-        Debug.LogWarning("[AWAKE PLAYER CONTROLLER] SPRITE RENDERER DESACTVADO - NO SE VE");
-        //gameObject.SetActive(false);
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = false;
-
-        
     }
-
 
     public override void OnNetworkSpawn()
     {
-
         base.OnNetworkSpawn();
 
+        // Nos suscribimos a los cambios de las variables sincronizadas
         characterIndexSync.OnValueChanged += OnCharacterIndexChanged;
         health_online.OnValueChanged += OnHealthChanged;
         Diamonds.OnValueChanged += OnDiamondsChanged;
         Keys.OnValueChanged += OnKeysChanged;
-        Debug.LogWarning("[ON NETWORK SPAWN] VOY A HACER LA CONEXION RED");
-        //gameObject.SetActive(true);
-        
-        //var sr = GetComponent<SpriteRenderer>();
-        
+
         if (IsOwner)
         {
+            // El dueño se registra como jugador local y avisa al GameManager qué personaje eligió
             UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
-                characterIndexSync.Value = GameManager.Instance.GetSelectedCharacterIndex(); ;
+                characterIndexSync.Value = GameManager.Instance.GetSelectedCharacterIndex();
             }
 
             ActualizarAspectoVisual(characterIndexSync.Value);
-
         }
         else
         {
-            if (characterIndexSync.Value!=0)
+            // Los demás clientes aplican el aspecto visual ya sincronizado
+            if (characterIndexSync.Value != 0)
             {
                 ActualizarAspectoVisual(characterIndexSync.Value);
             }
         }
 
-            string escenaActual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        string escenaActual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
         if (escenaActual == SceneNames.PlaygroundLevel)
         {
-            //if (sr != null) sr.enabled = true;
-            // Dispara eventos iniciales para actualizar el HUD
-            // Dispara eventos iniciales para actualizar el HUD
             if (IsOwner)
             {
+                // Avisamos al HUD los valores iniciales de vida, llaves y diamantes
                 GameEvents.HealthChanged(health_online.Value);
                 GameEvents.KeysChanged(Keys.Value);
                 GameEvents.DiamondsChanged(Diamonds.Value);
@@ -100,14 +86,14 @@ public class PlayerController : CharController
 
             IsAttacking = false;
         }
-        
-        
-        
     }
+
     private void OnCharacterIndexChanged(int previousValue, int newValue)
     {
         ActualizarAspectoVisual(newValue);
     }
+
+    // Aplica las estadísticas y el aspecto visual correspondientes al índice de personaje
     private void ActualizarAspectoVisual(int index)
     {
         if (GameManager.Instance == null) return;
@@ -120,29 +106,27 @@ public class PlayerController : CharController
 
         if (IsOwner)
         {
-            // Le aplicamos las stats mecánicas al CharController base
+            // Aplicamos las stats mecánicas al CharController base
             damageToEnemy = statsAsignadas.attackDamage;
             attackCooldown = statsAsignadas.attackCooldown;
             initialHealth = statsAsignadas.maxHealth;
         }
 
-        if (!IsSpawned) health_online = initialHealth_online; // Solo inicializa vida si está naciendo
+        if (!IsSpawned) health_online = initialHealth_online; // solo inicializa vida si recién nace
 
         if (IsServer)
         {
             health_online.Value = initialHealth;
-            health = health_online.Value; // Sincroniza la variable local del CharController base
-
+            health = health_online.Value; // sincroniza la variable local del CharController base
         }
 
-        // Cambiamos el color/animaciones en el renderizador
+        // Cambiamos el animator según el personaje
         if (statsAsignadas.animatorController != null && animator != null)
         {
             animator.runtimeAnimatorController = statsAsignadas.animatorController;
-            Debug.Log($"[NETCODE SUCCESS] {gameObject.name} visualmente sincronizado al personaje index: {index} ({statsAsignadas.characterName})");
         }
 
-        // Forzamos que el SpriteRenderer se encienda por si acaso el Awake lo dejó oculto
+        // Por si Awake dejó el sprite apagado, lo volvemos a encender
         var sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.enabled = true;
     }
@@ -163,9 +147,7 @@ public class PlayerController : CharController
         if (IsOwner)
         {
             GameEvents.HealthChanged(newValue);
-
         }
-
     }
 
     private void OnKeysChanged(int previo, int nuevo)
@@ -185,28 +167,19 @@ public class PlayerController : CharController
         Keys.OnValueChanged -= OnKeysChanged;
     }
 
-
-    /// <summary>
-    /// Inicializa estado del jugador y notifica los valores iniciales al HUD.
-    /// </summary>
+    // Arranca desactivado hasta que el flujo de spawn lo active
     protected override void Start()
     {
-        base.Start(); 
-
+        base.Start();
         gameObject.SetActive(false);
-        Debug.LogWarning("[START PLAYER CONTROLLER] JUGADOR DESACTIVADO");
     }
 
-
-
-    /// <summary>
-    /// Actualiza animación, orientación y estado de vida en cada frame.
-    /// </summary>
+    // Cada frame: comrpueba muerte y actualiza animación/orientación según el movimiento
     protected override void Update()
     {
+        if (!IsOwner || !IsSpawned) return; // si no soy el dueño, no controlo este jugador
 
-        if (!IsOwner) return; //si no eres el jugador no puedes mover el jugador
-        if (!IsSpawned || health_online.Value == 0) return;
+        checkDeath();
 
         if (isDead)
         {
@@ -223,98 +196,37 @@ public class PlayerController : CharController
             float angle = Mathf.Atan2(movement.y, movement.x) * Mathf.Rad2Deg;
             transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
         }
-
-        if (!IsSpawned || health_online.Value == 0) return; //si aun no se ha spawneado no se mira si ha muerto (puede aparecer muerto por lag)
-        checkDeath();
     }
 
-
-    //private void FixedUpdate()
-    //{
-    //    if (!IsOwner || !IsSpawned) return; //si no eres el dueño del script no mueves nada
-    //    string escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-    //    if (escena != SceneNames.PlaygroundLevel) return;
-
-    //    //var sr = GetComponent<SpriteRenderer>();
-    //    //if (sr != null && !sr.enabled) return; 
-
-    //    Vector2 movimiento = movement.normalized;
-
-
-    //    if (movimiento.sqrMagnitude > 0.01f)
-    //    {
-    //        //Se mueve el jugador localmente para respuesta inmediata
-    //        transform.Translate((Vector3)movimiento * moveSpeed * Time.fixedDeltaTime, Space.World);
-
-    //        //Notificar al servidor
-    //        //SendMovementToServerRpc(transform.position, transform.rotation);
-    //    }
-
-
-
-    //}
-
-    //[ServerRpc]
-    //void SendMovementToServerRpc(Vector3 pos, Quaternion rot)
-    //{
-    //    BroadcastTransformClientRpc(pos, rot);
-    //}
-    //void SendDirectionToServerRpc(Vector3 moveDirection)
-    //{
-    //    if (moveDirection == Vector3.zero) return;
-
-    //    Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-    //    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
-
-    //    float adjustedSpeed = moveSpeed;
-    //    transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
-
-    //    BroadcastTransformClientRpc(transform.position, transform.rotation);
-    //}
-
-    //[ClientRpc]
-    //void BroadcastTransformClientRpc(Vector3 pos, Quaternion rot)
-    //{
-    //    if (IsOwner) return;
-
-    //    transform.position = pos;
-    //    transform.rotation = rot;
-    //}
     protected override void FixedUpdate()
     {
-
         base.FixedUpdate();
-
-
     }
+
+    // El movimiento real solo se ejecuta si soy el dueño, estoy spawneado y en la escena de juego
     protected override void Move()
     {
-        //Si no es el duenno o no está spawneado, no hagas nada
         if (!IsOwner || !IsSpawned) return;
 
-        //Si la escena actual no es la de juego, no hagas nada
         string escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         if (escena != SceneNames.PlaygroundLevel) return;
-
 
         base.Move();
     }
 
+    // Activa al personaje en la posición indicada y avisa al server para que lo propague a todos
     [Rpc(SendTo.Everyone)]
     public void ActivarPersonajeRpc(Vector3 pos)
     {
         transform.position = pos;
         gameObject.SetActive(true);
-        //Debug.LogWarning("Host Activado");
-        //Decirle al server que active a los persoanjes
         NotificarActivacionRpc();
-
     }
 
     [Rpc(SendTo.Server)]
     public void NotificarActivacionRpc()
     {
-        //El server activa el networkObject en todos los clientes
+        // El server reenvía la activación a todos los clientes
         ActivarPersonajesRpc();
     }
 
@@ -322,40 +234,9 @@ public class PlayerController : CharController
     public void ActivarPersonajesRpc()
     {
         gameObject.SetActive(true);
-        //Debug.LogWarning("Personajes Activados");
     }
 
-    //void MovePlayer()
-    //{
-
-    //    // Calcular la dirección de movimiento en relación a la cámara
-    //    Vector3 moveDirection = new Vector3(verticalInput, horizontalInput, 0);
-    //    moveDirection.y = 0f; // Asegurarnos de que el movimiento es horizontal (sin componente Y)
-
-    //    // Mover el jugador usando el Transform
-    //    if (moveDirection != Vector3.zero)
-    //    {
-    //        // Calcular la rotación en Y basada en la dirección del movimiento
-    //        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-    //        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime);
-
-    //        // Ajustar la velocidad si es zombie
-    //        float adjustedSpeed = moveSpeed;
-
-    //        // Mover al jugador en la dirección deseada
-    //        transform.Translate(moveDirection * adjustedSpeed * Time.fixedDeltaTime, Space.World);
-
-    //        MoveRequestRpc(transform.position, transform.rotation);
-    //    }
-    //}
-
-    //[Rpc(SendTo.ClientsAndHost)]
-    //void MoveRequestRpc(Vector3 pos, Quaternion rot)
-    //{
-    //    this.transform.position = pos;
-    //    this.transform.rotation = rot;
-    //}
-
+    // Los clientes que no son dueños, sincronizan su animación de movimiento con la del dueño
     void LateUpdate()
     {
         if (!IsOwner)
@@ -364,10 +245,7 @@ public class PlayerController : CharController
         }
     }
 
-
-    /// <summary>
-    /// Activa el mapa de controles y suscribe la acción de ataque.
-    /// </summary>
+    // Activa el mapa de controles y se suscribe a movimiento y ataque
     private void OnEnable()
     {
         var sr = GetComponent<SpriteRenderer>();
@@ -377,39 +255,29 @@ public class PlayerController : CharController
 
         if (controls == null) controls = new PlayerControls();
 
-        //Activamos inputs
         controls.Enable();
 
-        //Suscribimos movimientos del personaje
         controls.Player.Move.performed += OnMovePerformed;
         controls.Player.Move.canceled += OnMoveCanceled;
 
-        //Sucribimos el ataque
         controls.Player.Attack.performed += onAttack;
     }
 
-    /// <summary>
-    /// Desuscribe la acción de ataque y desactiva el mapa de controles.
-    /// </summary>
+    // Se desuscribe de los controles y los desactiva
     private void OnDisable()
     {
         if (controls != null)
         {
-            //Desuscribimos el movimiento del personaje
             controls.Player.Move.performed -= OnMovePerformed;
             controls.Player.Move.canceled -= OnMoveCanceled;
 
-            //Desiscribimos el ataque
             controls.Player.Attack.performed -= onAttack;
 
-            //Desactivamos los inputs
             controls.Disable();
         }
     }
 
-    /// <summary>
-    /// Gestiona la muerte del jugador y lanza el flujo de fin de partida.
-    /// </summary>
+    // Gestiona la muerte del jugador local y avisa al GameManager
     public override void Die()
     {
         base.Die();
@@ -417,16 +285,14 @@ public class PlayerController : CharController
         if (IsOwner)
         {
             GameManager.LocalPlayerHasDied = true;
-            GameEvents.LocalPlayerDied();   // ← pantalla "has muerto" YA
+            GameEvents.LocalPlayerDied(); // muestra ya la pantalla de "has muerto"
         }
 
         if (GameManager.Instance != null)
             GameManager.Instance.NotificarMuerteServerRpc();
     }
 
-    /// <summary>
-    /// Aplica daño al jugador y notifica el cambio de salud al HUD.
-    /// </summary>
+    // Aplica daño descontando vida en el servidor y delega el resto en la clase base
     public override void TakeDamage(int amount, Vector2 knockbackDir)
     {
         if (isDead) return;
@@ -439,14 +305,9 @@ public class PlayerController : CharController
         }
 
         base.TakeDamage(amount, knockbackDir);
-
-        // Dispara evento de cambio de salud
-        //GameEvents.HealthChanged(health_online.Value);
     }
 
-    /// <summary>
-    /// Aplica un conjunto de estadísticas de personaje y recarga sus valores activos.
-    /// </summary>
+    // Reemplaza las stats actuales por unas nuevas y recarga todos los valores
     public void ApplyCharacterStats(PlayerStats newStats)
     {
         if (newStats == null)
@@ -456,56 +317,44 @@ public class PlayerController : CharController
         }
 
         stats = newStats;
-
-        // Recargar todas las stats
         LoadStats();
 
         Debug.Log($"[PlayerController] Stats aplicadas: {newStats.characterName}");
     }
 
-    /// <summary>
-    /// Carga estadísticas del personaje seleccionado y aplica valores de combate y movimiento.
-    /// </summary>
+    // Carga las estadísticas del personaje seleccionado (o valores por defecto si no hay ninguno)
     protected override void LoadStats()
     {
         if (IsOwner && GameManager.Instance != null && GameManager.Instance.SelectedCharacterStats != null)
         {
             stats = GameManager.Instance.SelectedCharacterStats;
-            Debug.Log($"[PlayerController] Cargando personaje seleccionado: {stats.characterName}");
         }
-
-        // Si no hay personaje seleccionado, usa el asignado en el prefab (fallback)
 
         base.LoadStats();
 
-        //  Haz casting del campo heredado
+        // Casteamos el campo heredado a PlayerStats para acceder a sus campos propios
         PlayerStats playerStats = stats as PlayerStats;
 
         if (playerStats != null)
         {
-            // Aplica el bonus de velocidad del jugador
             moveSpeed *= playerStats.speedBonus;
 
-            // Carga stats específicas del jugador
             damageToEnemy = playerStats.attackDamage;
             attackCooldown = playerStats.attackCooldown;
         }
         else
         {
-            // Valores por defecto si no hay PlayerStats
+            // Sin PlayerStats asignado, usamos valores por defecto
             Debug.LogWarning($"[{gameObject.name}] No tiene PlayerStats asignado. Usando valores por defecto.");
             damageToEnemy = 50;
             attackCooldown = 0.5f;
-            moveSpeed *= 1.25f; // Bonus por defecto
+            moveSpeed *= 1.25f;
         }
     }
 
-    /// <summary>
-    /// Verifica si la salud ha llegado a cero y ejecuta la muerte una sola vez.
-    /// </summary>
+    // Comprueba si la vida llegó a cero y, si es así, dispara la muerte una sola vez
     private void checkDeath()
     {
-        //Debug.Log($"[checkDeath] health_online: {health_online} | isDead: {isDead}");
         if (health_online.Value <= 0 && !isDead)
         {
             Die();
@@ -519,6 +368,7 @@ public class PlayerController : CharController
             GameEvents.DiamondsChanged(nuevo);
         }
     }
+
     public void AddDiamondServer()
     {
         if (!IsServer) return;
@@ -539,11 +389,7 @@ public class PlayerController : CharController
         return true;
     }
 
-
-
-    /// <summary>
-    /// Inicia la animación de ataque y programa su final según el cooldown.
-    /// </summary>
+    // Dispara la animación de ataque y la corta automáticamente tras el cooldown
     private void onAttack(InputAction.CallbackContext context)
     {
         if (!IsOwner || isDead) return;
@@ -564,13 +410,8 @@ public class PlayerController : CharController
         movement = Vector2.zero;
     }
 
-    /// <summary>
-    /// Finaliza el estado de ataque del jugador.
-    /// </summary>
     private void endAttack()
     {
         IsAttacking = false;
     }
-
-
 }

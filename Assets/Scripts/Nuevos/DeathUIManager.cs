@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using TMPro; // Asegúrate de incluir TMPro para los textos
+using TMPro;
 
 public class DeathUIManager : MonoBehaviour
 {
@@ -20,7 +20,7 @@ public class DeathUIManager : MonoBehaviour
 
     private void OnDisable()
     {
-        // Nos desuscribimos para evitar errores de memoria
+        // Nos desuscribimos para evitar errores
         GameEvents.OnPlayerDied -= MostrarPantallaMuerte;
         GameManager.OnStatsSynced -= UpdateStatsDisplay;
     }
@@ -30,8 +30,6 @@ public class DeathUIManager : MonoBehaviour
         if (deathUIPanel != null)
         {
             deathUIPanel.SetActive(true);
-            // ✅ No hace falta llamar a UpdateStatsDisplay aquí,
-            // porque el evento llega ya con los datos listos.
             UpdateStatsDisplay();
         }
     }
@@ -45,10 +43,10 @@ public class DeathUIManager : MonoBehaviour
                 enemigos.text = " " + GameManager.EnemigosEliminados;
 
             if (diamantes != null)
-                diamantes.text = " " + GameManager.DiamantesEncontrados;   // ← estática, NO LocalPlayerController
+                diamantes.text = " " + GameManager.DiamantesEncontrados;
 
             if (llaves != null)
-                llaves.text = " " + GameManager.LlavesSinUsar;              // ← estática, NO LocalPlayerController
+                llaves.text = " " + GameManager.LlavesSinUsar; 
         }
     }
 }

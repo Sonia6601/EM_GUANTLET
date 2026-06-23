@@ -8,7 +8,7 @@ public class VictoryScreenDisplay : MonoBehaviour
     [SerializeField] private TMP_Text enemigos;
     [SerializeField] private TMP_Text llaves;
     [SerializeField] private TMP_Text diamantes;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
         UpdateDisplay();

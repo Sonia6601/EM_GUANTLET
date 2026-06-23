@@ -3,7 +3,7 @@ using UnityEngine;
 public class LocalDeathScreen : MonoBehaviour
 {
     [SerializeField] private GameObject canvasLocalDeath;  // CanvasLocalDeath
-    [SerializeField] private GameObject panelStats;        // el Panel de stats dentro de Canvas
+    [SerializeField] private GameObject panelStats;        // Panel dentro de Canvas
 
     private void OnEnable()
     {
@@ -29,6 +29,6 @@ public class LocalDeathScreen : MonoBehaviour
             canvasLocalDeath.SetActive(false);   // oculta la individual
 
         if (panelStats != null)
-            panelStats.SetActive(true);          // muestra las stats
+            panelStats.SetActive(true);          // muestra la global
     }
 }

@@ -15,7 +15,4 @@ public abstract class EnemyStats : CharacterStats
     [Header("Drops")]
     [Tooltip("Prefabs que puede soltar al morir (índice 0 = diamante, índice 1 = llave)")]
     public GameObject[] dropPrefabs;
-
-    // ❌ keyDropChance, minDrops, maxDrops eliminados:
-    //    ahora se leen desde MapConfig (dragonDropConfig / goatDropConfig)
 }
