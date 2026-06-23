@@ -298,7 +298,8 @@ public class LevelGenerator : NetworkBehaviour
         PlayerController existingPlayer = GameManager.Instance?.LocalPlayerController;
         if (existingPlayer != null)
         {
-            applySpawnAndCharacter(existingPlayer, pendingSpawnPos);
+            Vector3 offsetSpawnPos = CalculateOffsetSpawnPosition(pendingSpawnPos, existingPlayer.OwnerClientId);
+            applySpawnAndCharacter(existingPlayer, offsetSpawnPos);
             hasPendingSpawn = false;
         }
     }
@@ -310,7 +311,8 @@ public class LevelGenerator : NetworkBehaviour
     {
         if (player == null || !hasPendingSpawn) return;
 
-        applySpawnAndCharacter(player, pendingSpawnPos);
+        Vector3 offsetSpawnPos = CalculateOffsetSpawnPosition(pendingSpawnPos, player.OwnerClientId);
+        applySpawnAndCharacter(player, offsetSpawnPos);
         hasPendingSpawn = false;
     }
 
@@ -403,6 +405,21 @@ public class LevelGenerator : NetworkBehaviour
         );
 
         return true;
+    }
+
+    private Vector3 CalculateOffsetSpawnPosition(Vector3 basePos, ulong clientId)
+    {
+        float radius = 2f;
+        float angleStep = 360f / Mathf.Max(1, NetworkManager.Singleton.ConnectedClientsList.Count);
+        float angle = angleStep * clientId * Mathf.Deg2Rad;
+
+        Vector3 offset = new Vector3(
+            Mathf.Cos(angle) * radius,
+            Mathf.Sin(angle) * radius,
+            0f
+        );
+
+        return basePos + offset;
     }
 
     /// <summary>
