@@ -71,12 +71,8 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         Debug.Log("[HOST]: Sala creada con codigo: " + codeRoom);
         GameManager.Instance.RoomCode = codeRoom;
 
-        // 1. Obtenemos el componente 'UnityTransport' del NetworkManager.
-        // El 'UnityTransport' es el motor/protocolo de bajo nivel que usa Unity Netcode para enviar y recibir datos en red local o a través de internet (gestiona los sockets UDP)
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
 
-        // 2. Le indicamos a UnityTransport en qué Dirección IP y Puerto (7777 es el estándar) debe "abrir sus puertas".
-        // Como Host, esto significa: "Escucha a cualquier jugador que intente conectarse a mi IP local en el puerto 7777".
         transport.SetConnectionData(localIP, 7777);
 
         NetworkManager.Singleton.StartHost();
@@ -90,10 +86,6 @@ public class MainMenuButtonsHandler : NetworkBehaviour
     {
         try
         {
-            // 1. Dns.GetHostName(): Obtiene el nombre del ordenador local (ej: "PC-Juan").
-            // 2. Dns.GetHostEntry(...): Busca en la red ese nombre y devuelve todas las interfaces de red de este PC.
-            // 3. AddressList.First(...): Filtra la lista para quedarse con la primera dirección que sea de tipo 'InterNetwork' (es decir, IPv4). Filtrar es necesario porque también puede devolver direcciones IPv6 o de red virtual.
-            // 4. ToString(): Convierte la IP encontrada a texto (ej: "192.168.1.33").
             var ip = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(f => f.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
 
             if (ip == null)
@@ -130,9 +122,6 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         // Recuperamos el componente de transporte para decirle al cliente a dónde debe conectarse.
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
 
-        // OJO: Al usar 'GetLocalIPv4()' aquí, el cliente está calculando y usando su *propia* IP.
-        // Esto es útil SÓLO si probáis el juego abriendo dos ventanas en el mismo ordenador. 
-        // Si vais a jugar desde ordenadores distintos, no funcionará así, habría que usar la lógica de IP a Código.
         var localIP = GetLocalIPv4();
 
         transport.SetConnectionData(localIP, 7777); //la ip está configurada para que se pruebe desde el mismo ordenador solo
@@ -141,10 +130,6 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         NetworkManager.Singleton.StartClient();
     }
 
-    // [Rpc(SendTo.Server)] indica que este método es una llamada de red de Cliente a Servidor.
-    // Aunque un Cliente llame a esta función en su propio código, la función se envía por red
-    // y se EJECUTA ÚNICAMENTE EN EL ORDENADOR DEL HOST (Servidor).
-    // Es el sustituto moderno del antiguo atributo [ServerRpc].
     [Rpc(SendTo.Server)]
     public void ValidarCodigoServerRpc(string codigoCliente, ulong clientId)
     {
@@ -160,7 +145,7 @@ public class MainMenuButtonsHandler : NetworkBehaviour
 
     private bool GUIcodigo()
     {
-        //Comprobaciones varias para saber por qué no funcionaba        if (inputCode == null)
+        //Comprobaciones varias para saber por qué no funcionaba
         {
             Debug.LogError("inputCode es NULL Asígnalo en el Inspector");
             return false;
@@ -269,7 +254,7 @@ public class MainMenuButtonsHandler : NetworkBehaviour
         //Aquí se generará el código de la sala, el host se lo pasará a sus amiguitos para poder jugar juntos
         //El código debe aparecer en el canvas de la escena de selección de jugadores
         string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        string code = ""; //no pongais un espacio que si no se inicializa con uno
+        string code = ""; //gente no pongais un espacio que si no se inicializa con uno
 
         for (int i = 0; i < 6; i++)
         {

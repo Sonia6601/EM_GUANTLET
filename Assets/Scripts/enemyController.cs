@@ -96,13 +96,7 @@ public abstract class EnemyController : CharController
             netObj.Despawn(true);
         }
     }
-    /*
-    [ClientRpc]
-    private void SpawnDropsClientRpc(Vector3 posicionEnemigo)
-    {
-        spawnDrops();
-    }
-    */
+   
     /// <summary>
     /// Genera los drops del enemigo usando la configuración activa del mapa.
     /// </summary>

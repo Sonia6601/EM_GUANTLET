@@ -59,15 +59,15 @@ public class EnemySpawner : NetworkBehaviour
             spawnPos += new Vector3(offset.x, offset.y, 0f);
         }
 
-        // 1. Instanciar el enemigo localmente en el servidor
+        // Instancia el enemigo localmente en el servidor
         GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
 
-        // 2. Regenerar el ID único (tu lógica existente)
+        // Regenerar el ID único
         UniqueEntity uniqueEntity = enemy.GetComponent<UniqueEntity>();
         if (uniqueEntity != null)
             uniqueEntity.RegenerateIdOnSpawn();
 
-        // 3. Registrar el enemigo en la red para que aparezca en todos los clientes
+        // Registrar el enemigo en la red para que aparezca en todos los clientes
         NetworkObject netObj = enemy.GetComponent<NetworkObject>();
         if (netObj != null)
         {

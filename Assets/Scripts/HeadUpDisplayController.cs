@@ -57,6 +57,7 @@ public class HeadUpDisplayController : MonoBehaviour
     {
         resolveActiveBlockFromSelectedCharacter();
         refreshBlockVisibility();
+
     }
 
     /// <summary>
@@ -104,26 +105,25 @@ public class HeadUpDisplayController : MonoBehaviour
     /// <summary>
     /// Actualiza el dígito de llaves del bloque de HUD activo.
     /// </summary>
-    public void UpdateKeys()
+    public void UpdateKeys(int keys)
     {
         if (activeBlock == null) return;
 
-        int keys = GameManager.Instance != null ? GameManager.Instance.GetKeys() : 0;
         int units = keys % 10;
         Sprite unitsSprite = getSpriteForDigit(units);
 
         if (activeBlock.imageKeyUnits != null && activeBlock.imageKeyUnits.sprite != unitsSprite)
             activeBlock.imageKeyUnits.sprite = unitsSprite;
+
     }
 
     /// <summary>
     /// Actualiza los dígitos de diamantes del bloque de HUD activo.
     /// </summary>
-    public void UpdateDiamonds()
+    public void UpdateDiamonds(int diamonds)
     {
         if (activeBlock == null) return;
 
-        int diamonds = GameManager.Instance != null ? GameManager.Instance.GetDiamonds() : 0;
         int hundreds = diamonds / 100;
         int tens = (diamonds % 100) / 10;
         int units = diamonds % 10;
@@ -192,6 +192,8 @@ public class HeadUpDisplayController : MonoBehaviour
             block.root.SetActive(visible);
         }
     }
+
+
 
     /// <summary>
     /// Devuelve el sprite correspondiente al dígito solicitado.

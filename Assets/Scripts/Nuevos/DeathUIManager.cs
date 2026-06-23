@@ -1,20 +1,28 @@
-using UnityEngine;
+﻿using UnityEngine;
+using TMPro;
 
 public class DeathUIManager : MonoBehaviour
 {
     [Header("UI References")]
-    [SerializeField] private GameObject deathUIPanel; 
+    [SerializeField] private GameObject deathUIPanel;
+
+    [Header("Stats References")]
+    [SerializeField] private TMP_Text enemigos;
+    [SerializeField] private TMP_Text llaves;
+    [SerializeField] private TMP_Text diamantes;
 
     private void OnEnable()
     {
-        // Nos suscribimos al evento de muerte
+        // Nos suscribimos al evento de muerte y a la sincronización de red
         GameEvents.OnPlayerDied += MostrarPantallaMuerte;
+        GameManager.OnStatsSynced += UpdateStatsDisplay;
     }
 
     private void OnDisable()
     {
-        // Nos desuscribimos para evitar errores al cambiar de escena
+        // Nos desuscribimos para evitar errores
         GameEvents.OnPlayerDied -= MostrarPantallaMuerte;
+        GameManager.OnStatsSynced -= UpdateStatsDisplay;
     }
 
     private void MostrarPantallaMuerte()
@@ -22,8 +30,23 @@ public class DeathUIManager : MonoBehaviour
         if (deathUIPanel != null)
         {
             deathUIPanel.SetActive(true);
-            Debug.Log("[UI] Pantalla de muerte activada para el jugador local.");
+            UpdateStatsDisplay();
         }
     }
 
+
+    private void UpdateStatsDisplay()
+    {
+        if (deathUIPanel != null && deathUIPanel.activeSelf)
+        {
+            if (enemigos != null)
+                enemigos.text = " " + GameManager.EnemigosEliminados;
+
+            if (diamantes != null)
+                diamantes.text = " " + GameManager.DiamantesEncontrados;
+
+            if (llaves != null)
+                llaves.text = " " + GameManager.LlavesSinUsar; 
+        }
+    }
 }

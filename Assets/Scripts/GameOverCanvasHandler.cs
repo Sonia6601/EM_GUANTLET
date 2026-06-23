@@ -1,6 +1,9 @@
-using TMPro;
+ï»¿using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode;
+using System;
+using System.Collections;
 
 public class GameOverCanvasHandler : MonoBehaviour
 {
@@ -9,19 +12,45 @@ public class GameOverCanvasHandler : MonoBehaviour
     [SerializeField] private TextMeshProUGUI enemiesKilledText;
 
     /// <summary>
-    /// Inicializa la pantalla mostrando las estadísticas finales de la partida.
+    /// Inicializa la pantalla mostrando las estadÃ­sticas finales de la partida.
     /// </summary>
     private void Start()
     {
         displayGameStats();
     }
 
+    private void OnEnable()
+    {
+        GameManager.OnStatsSynced += displayGameStats;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.OnStatsSynced -= displayGameStats;
+    }
+
+
     /// <summary>
-    /// Carga el menú principal al pulsar el botón de volver.
+    /// Carga el menÃº principal al pulsar el botÃ³n de volver.
     /// </summary>
     public void OnBackButtonClicked()
     {
+        StartCoroutine(ShutdownAndReturnToMenu());
+    }
+
+    private IEnumerator ShutdownAndReturnToMenu()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.Shutdown();
+
+            // Esperamos a que el shutdown termine de verdad antes de cambiar de escena
+            yield return new WaitUntil(() => NetworkManager.Singleton == null || !NetworkManager.Singleton.ShutdownInProgress);
+            yield return null; // un frame extra por si acaso
+        }
+
         SceneManager.LoadScene(SceneNames.MainMenu);
+
     }
 
     /// <summary>
@@ -29,15 +58,13 @@ public class GameOverCanvasHandler : MonoBehaviour
     /// </summary>
     private void displayGameStats()
     {
-        if (GameManager.Instance == null) return;
-
         if (jewelsValueText != null)
-            jewelsValueText.text = GameManager.Instance.GetDiamonds().ToString();
+            jewelsValueText.text = GameManager.DiamantesEncontrados.ToString();
 
         if (keysValueText != null)
-            keysValueText.text = GameManager.Instance.GetKeys().ToString();
+            keysValueText.text = GameManager.LlavesSinUsar.ToString();
 
         if (enemiesKilledText != null)
-            enemiesKilledText.text = GameManager.Instance.EnemiesKilled.ToString();
+            enemiesKilledText.text = GameManager.EnemigosEliminados.ToString();
     }
 }

@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class PlayerState : NetworkBehaviour
 {
-    // Referencia estática al PlayerState local, solo válida cuando está spawneado
-    public static PlayerState LocalInstance { get; private set; }
+    
+    public static PlayerState LocalInstance { get; private set; } // Referencia estática al PlayerState local
 
     public NetworkVariable<bool> isReady = new NetworkVariable<bool>(
         false,
@@ -14,7 +14,6 @@ public class PlayerState : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Solo el dueño del objeto se registra como instancia local
         if (IsOwner)
         {
             LocalInstance = this;
